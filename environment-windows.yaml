@@ -1,0 +1,35 @@
+name: gen4rec
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.26
+  - pandas
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - tqdm
+  - jupyterlab
+  - ipykernel
+  - pytorch=2.2.2
+  - torchvision=0.17.2
+  - torchaudio=2.2.2
+  - ffmpeg
+  - pip:
+      - streamlit
+      - laion-clap==1.1.7
+      - faiss-cpu==1.13.2
+      - openai==2.24.0
+      - huggingface_hub
+      - python-dotenv
+      - requests
+      - transformers==4.41.2
+      - google-genai==1.65.0
+      - h5py
+      - ytmusicapi==1.11.5
+      - yt-dlp
+      - wget
