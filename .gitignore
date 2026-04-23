@@ -1,6 +1,7 @@
-# Dataset: CSVs are too large for Git — keep locally or share outside the repo
+# Dataset + audio — do not commit (large / binary). Audios live under music4all/audios/
 music4all/**/*.csv
 music4all/audios/
+music4all/audios/**
 music4all/*.csv
 music4all
 
@@ -11,13 +12,14 @@ music4allA+A
 # Model weights / checkpoints
 weights/
 
-# Generated outputs: allow committing *.npy (e.g. under outputs/embeddings/music4all/)
+# Generated outputs: commit *.npy under outputs/embeddings/music4all/ except zero-shot (very large)
 outputs/*
 !outputs/embeddings/
 outputs/embeddings/*
 !outputs/embeddings/music4all/
 outputs/embeddings/music4all/*
 !outputs/embeddings/music4all/*.npy
+outputs/embeddings/music4all/music4all_embeddings_zeroshot.npy
 
 # Database files
 src/data/*.db
