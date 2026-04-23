@@ -283,6 +283,24 @@ def main() -> None:
     args = parser.parse_args()
 
     os.makedirs(Config.EMBEDDINGS_DIR, exist_ok=True)
+    variant = build_user_embedding_variant_tag(
+        recent_k=args.recent_k,
+        decay_lambda=args.decay_lambda,
+        medoid_threshold=args.medoid_threshold,
+        min_keep=args.min_keep,
+    )
+    user_emb_path = Path(Config.EMBEDDINGS_DIR) / f"user_embeddings__{variant}.npy"
+    user_ids_path = Path(Config.EMBEDDINGS_DIR) / f"user_ids__{variant}.npy"
+    stats_path = Path(Config.EMBEDDINGS_DIR) / f"user_embedding_stats__{variant}.csv"
+
+    # Fast-path cache reuse: if variant outputs already exist and --force is not
+    # requested, exit before loading large inputs or recomputing embeddings.
+    if not args.force and user_emb_path.exists() and user_ids_path.exists() and stats_path.exists():
+        print(f"Variant already exists, skipping rebuild: {variant}")
+        print(f"User embeddings: {user_emb_path}")
+        print(f"User ids: {user_ids_path}")
+        print(f"Stats: {stats_path}")
+        return
 
     print(f"Loading song embeddings from {Config.SONG_EMB_PATH}")
     song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
@@ -304,23 +322,6 @@ def main() -> None:
         medoid_threshold=args.medoid_threshold,
         min_keep=args.min_keep,
     )
-
-    variant = build_user_embedding_variant_tag(
-        recent_k=args.recent_k,
-        decay_lambda=args.decay_lambda,
-        medoid_threshold=args.medoid_threshold,
-        min_keep=args.min_keep,
-    )
-    user_emb_path = Path(Config.EMBEDDINGS_DIR) / f"user_embeddings__{variant}.npy"
-    user_ids_path = Path(Config.EMBEDDINGS_DIR) / f"user_ids__{variant}.npy"
-    stats_path = Path(Config.EMBEDDINGS_DIR) / f"user_embedding_stats__{variant}.csv"
-
-    if not args.force and user_emb_path.exists() and user_ids_path.exists() and stats_path.exists():
-        print(f"Variant already exists, skipping rebuild: {variant}")
-        print(f"User embeddings: {user_emb_path}")
-        print(f"User ids: {user_ids_path}")
-        print(f"Stats: {stats_path}")
-        return
 
     np.save(user_emb_path, user_embs)
     np.save(user_ids_path, user_ids)
