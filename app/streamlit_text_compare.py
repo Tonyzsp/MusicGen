@@ -1,16 +1,21 @@
 """
-Streamlit: text-to-music retrieval — rank songs from a text query using CLAP (base vs fine-tuned).
+Streamlit: text/audio-to-music retrieval — compare base vs fine-tuned CLAP spaces.
 
-Cross-modal: text encoder query vs precomputed *audio* embeddings for each track.
+Supports two query modes:
+- Text description -> retrieve by text-to-audio similarity
+- Uploaded audio -> retrieve by audio-to-audio similarity
 
 From repo root:
-  python -m streamlit run app/streamlit_text_compare.py
+  python -m streamlit run app/streamlit_query_compare.py
+  (legacy entrypoint still works: app/streamlit_text_compare.py)
 """
 from __future__ import annotations
 
 import html
+import os
 from pathlib import Path
 import sys
+import tempfile
 from typing import Any
 
 import pandas as pd
@@ -23,11 +28,12 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.services.text_compare_service import (
     load_embedding_matrices,
+    retrieve_both_from_audio,
     retrieve_both,
 )
 
 
-st.set_page_config(page_title="Gen4Rec · Text → music retrieval", layout="wide")
+st.set_page_config(page_title="Gen4Rec · Text/Audio → music retrieval", layout="wide")
 
 # Short label → full prompt text (fills the description box when clicked)
 QUERY_TEMPLATES: list[tuple[str, str]] = [
@@ -327,10 +333,10 @@ def _render_model_section(title: str, hits: list[dict], *, side: str, run_id: in
 
 def main() -> None:
     _inject_styles()
-    st.title("Text → music retrieval")
+    st.title("Text/Audio → music retrieval")
     st.caption(
-        "Type a **text description**; we **retrieve songs** whose **audio** is closest to that text in CLAP space "
-        "(not “text search” in lyrics/metadata)."
+        "Use a **text description** or **uploaded audio** query; we **retrieve songs** whose **audio embeddings** "
+        "are closest in CLAP space (not keyword search in lyrics/metadata)."
     )
 
     try:
@@ -355,6 +361,12 @@ def main() -> None:
 
     with st.sidebar:
         st.subheader("Query")
+        query_mode = st.radio(
+            "Query mode",
+            options=["Text description", "Upload audio"],
+            index=0,
+            help="Compare base vs fine-tuned retrieval using text query or uploaded audio query.",
+        )
         top_k = st.number_input(
             "How many songs to retrieve (per model)",
             min_value=1,
@@ -367,23 +379,39 @@ def main() -> None:
             st.code(matrices.zeroshot_path, language="text")
             st.code(matrices.finetuned_path, language="text")
 
-    _render_query_templates()
+    uploaded_audio = None
+    if query_mode == "Text description":
+        _render_query_templates()
+        st.text_area(
+            "Describe the music you want (text → song retrieval)",
+            height=110,
+            placeholder="e.g. melancholic piano ballad, upbeat electronic dance, heavy distorted guitars…",
+            key="tc_query_text",
+        )
+    else:
+        uploaded_audio = st.file_uploader(
+            "Upload query audio (audio → song retrieval)",
+            type=["mp3", "wav", "flac", "ogg", "m4a"],
+            help="Upload one audio clip as the query. We will compare retrieval in base vs fine-tuned embedding spaces.",
+        )
+        if uploaded_audio is not None:
+            st.audio(uploaded_audio.getvalue(), format=uploaded_audio.type or "audio/mpeg")
 
-    st.text_area(
-        "Describe the music you want (text → song retrieval)",
-        height=110,
-        placeholder="e.g. melancholic piano ballad, upbeat electronic dance, heavy distorted guitars…",
-        key="tc_query_text",
-    )
     btn_col, _btn_spacer = st.columns([1, 5], gap="small")
     with btn_col:
-        run = st.button("Retrieve", type="primary", use_container_width=True, help="Run text → audio retrieval (base vs fine-tuned).")
+        run = st.button(
+            "Retrieve",
+            type="primary",
+            use_container_width=True,
+            help="Run retrieval (base vs fine-tuned).",
+        )
 
     if run:
-        query = (st.session_state.get("tc_query_text") or "").strip()
-        if not query:
-            st.warning("Please enter a text description of the music you want.")
-        else:
+        if query_mode == "Text description":
+            query = (st.session_state.get("tc_query_text") or "").strip()
+            if not query:
+                st.warning("Please enter a text description of the music you want.")
+                return
             had_results = "tc_base_hits" in st.session_state
             spin_msg = (
                 "Reloading: encoding your query and retrieving songs…"
@@ -399,15 +427,48 @@ def main() -> None:
                 except Exception as e:
                     st.exception(e)
                     return
-            st.session_state["tc_base_hits"] = base_hits
-            st.session_state["tc_ft_hits"] = ft_hits
-            new_rid = int(st.session_state.get("tc_run_id", 0)) + 1
-            st.session_state["tc_run_id"] = new_rid
-            st.session_state[f"tc_trk_base_{new_rid}"] = 0
-            st.session_state[f"tc_trk_ft_{new_rid}"] = 0
+        else:
+            if uploaded_audio is None:
+                st.warning("Please upload an audio file first.")
+                return
+            suffix = Path(uploaded_audio.name or "query.wav").suffix or ".wav"
+            tmp_path = ""
+            had_results = "tc_base_hits" in st.session_state
+            spin_msg = (
+                "Reloading: encoding uploaded audio and retrieving songs…"
+                if had_results
+                else "First retrieval: loading models and encoding uploaded audio (may take a while)…"
+            )
+            with st.spinner(spin_msg):
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+                        f.write(uploaded_audio.getvalue())
+                        tmp_path = f.name
+                    base_hits, ft_hits = retrieve_both_from_audio(tmp_path, matrices, int(top_k))
+                except FileNotFoundError as e:
+                    st.error(str(e))
+                    return
+                except Exception as e:
+                    st.exception(e)
+                    return
+                finally:
+                    if tmp_path and os.path.isfile(tmp_path):
+                        try:
+                            os.remove(tmp_path)
+                        except OSError:
+                            pass
+        st.session_state["tc_base_hits"] = base_hits
+        st.session_state["tc_ft_hits"] = ft_hits
+        new_rid = int(st.session_state.get("tc_run_id", 0)) + 1
+        st.session_state["tc_run_id"] = new_rid
+        st.session_state[f"tc_trk_base_{new_rid}"] = 0
+        st.session_state[f"tc_trk_ft_{new_rid}"] = 0
 
     if "tc_base_hits" not in st.session_state:
-        st.info("Pick a template or type your own description, then click **Retrieve**.")
+        if query_mode == "Upload audio":
+            st.info("Upload an audio clip, then click **Retrieve**.")
+        else:
+            st.info("Pick a template or type your own description, then click **Retrieve**.")
         return
 
     base_hits: list[dict] = st.session_state["tc_base_hits"]

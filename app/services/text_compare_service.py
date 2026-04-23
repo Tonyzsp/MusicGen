@@ -20,6 +20,7 @@ from transformers import RobertaTokenizer
 
 from src.embed.embed_music4all import load_finetuned_model_and_attention
 from src.embed.embed_music4all_zeroshot import load_zeroshot_clap
+from src.eval.clap_audio import embed_audio_paths
 from src.embed.recommend_topk import Config as RecConfig
 from src.embed.recommend_topk import load_audio_metadata, load_song_metadata
 
@@ -211,6 +212,43 @@ def retrieve_both(
 
     z_idx, z_scores = cosine_topk(z_text, matrices.base, top_k)
     f_idx, f_scores = cosine_topk(f_text, matrices.finetuned, top_k)
+
+    def pack(indices: np.ndarray, scores: np.ndarray) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for i, s in zip(indices.tolist(), scores.tolist()):
+            sid = str(matrices.ids[i])
+            ap = resolve_audio_path(sid)
+            out.append(
+                {
+                    "song_id": sid,
+                    "cosine_similarity": float(s),
+                    "audio_path": ap,
+                    "audio_exists": os.path.isfile(ap),
+                    "metadata": format_metadata_row(row_for_song(sid)),
+                }
+            )
+        return out
+
+    return pack(z_idx, z_scores), pack(f_idx, f_scores)
+
+
+def retrieve_both_from_audio(
+    audio_path: str,
+    matrices: EmbeddingMatrices,
+    top_k: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Audio-to-audio retrieval for comparison:
+    - Query audio embedded by zero-shot encoder vs zero-shot song matrix
+    - Query audio embedded by fine-tuned encoder vs fine-tuned song matrix
+    """
+    z_embs, _ = embed_audio_paths([audio_path], encoder="zeroshot")
+    f_embs, _ = embed_audio_paths([audio_path], encoder="finetuned")
+    z_audio = z_embs[str(audio_path)]
+    f_audio = f_embs[str(audio_path)]
+
+    z_idx, z_scores = cosine_topk(z_audio, matrices.base, top_k)
+    f_idx, f_scores = cosine_topk(f_audio, matrices.finetuned, top_k)
 
     def pack(indices: np.ndarray, scores: np.ndarray) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
