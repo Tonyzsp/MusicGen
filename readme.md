@@ -1,227 +1,172 @@
 # Gen4Rec
 
-## 1) Create or update the Conda environment (`environment.yaml`)
+## Project Introduction
 
-This repository uses `environment.yaml` to manage dependencies.
+Gen4Rec is a generative music recommendation project.  
+Instead of only retrieving existing tracks, it builds user embeddings from listening history, generates new music candidates, reranks them in embedding space, and evaluates personalization/diversity/risk metrics.
 
-### Create a new environment
+Main stages:
 
-```bash
-conda env create -f environment.yaml
+1. User embedding construction
+2. Profile and prompt generation
+3. Music generation
+4. Rerank
+5. Evaluation
+
+---
+
+## Teammates
+
+1. Tony Zhao (`sz3822`) - [GitHub](https://github.com/Tonyzsp)
+2. Conny Fan (`jf4644`) - [GitHub](https://github.com/ConnyFan123)
+3. Jerry Huang (`jh8186`) - [GitHub](https://github.com/J-hjr)
+
+---
+
+## Project Structure (Current)
+
+```text
+Gen4Rec/
+├── app/
+│   ├── services/
+│   │   ├── artifact_service.py
+│   │   ├── pipeline_service.py
+│   │   └── viz_service.py
+│   ├── streamlit_app.py
+│   ├── streamlit_query_compare.py
+│   └── streamlit_text_compare.py
+├── scripts/
+│   └── run_full_pipeline.py
+├── src/
+│   ├── data/
+│   ├── embed/
+│   ├── profile_prompt/
+│   ├── generate/
+│   └── eval/
+├── music4all/                         # local dataset folder (NOT committed)
+│   ├── listening_history.csv          # must download manually (large)
+│   ├── id_information.csv             # must download manually (large)
+│   ├── id_genres.csv                  # must download manually (large)
+│   ├── id_tags.csv                    # must download manually (large)
+│   ├── id_metadata.csv                # must download manually (large)
+│   └── audios/                        # must download manually (very large)
+├── weights/
+│   └── clap/                          # local checkpoints (NOT committed)
+│       ├── music_audioset_epoch_15_esc_90.14.pt   # download manually
+│       └── clap_finetuned_best.pt                 # download manually
+├── outputs/                           # generated artifacts (NOT committed)
+├── notebooks/
+├── environment.yaml
+├── environment-windows.yaml
+└── .gitignore
 ```
 
-## TODO
+Note: dataset CSV/audio files and model checkpoints are intentionally not stored in git due size. Each teammate needs to download them locally.
 
-- Reorganize the repository input and output structure so file locations are clear and consistent.
-- Make sure every pipeline step uses aligned inputs and outputs end-to-end, with no path or naming mismatches.
-- Decide on a clear storage strategy for embedding files and make sure their placement is consistent across the project  (Cloud or Local).
-- Improve the Suno prompt package, including better prompt formatting, lyrics handling, title generation, and related generation controls.
-- Design and implement an evaluation pipeline for generated tracks, including rerank quality checks and reportable metrics.
+---
 
+## CLI (Phase-by-Phase)
 
-### Update an existing environment
-
-```bash
-conda env update -f environment.yaml --prune
-```
-
-`--prune` removes packages that are no longer listed in `environment.yaml`.
-
-### Verify available environments
-
-```bash
-conda env list
-```
-
-If `environment.yaml` defines a name (for example `gen4rec`), activate it with:
+### 1) Activate Environment
 
 ```bash
 conda activate gen4rec
 ```
 
-### CLAP model/checkpoint paths (robust default)
-
-By default, embedding and fine-tuning scripts now use:
-
-```text
-Gen4Rec/weights/clap/
-├── music_audioset_epoch_15_esc_90.14.pt
-└── clap_finetuned_best.pt
-```
-
-You can override paths via environment variables:
+Optional API keys:
 
 ```bash
-export GEN4REC_DATASET_PATH="/path/to/music4all"
-export GEN4REC_WEIGHTS_DIR="/path/to/weights/clap"
-export GEN4REC_CLAP_BASE_CKPT_PATH="/path/to/music_audioset_epoch_15_esc_90.14.pt"
-export GEN4REC_CLAP_FINETUNED_CKPT_PATH="/path/to/clap_finetuned_best.pt"
-export GEN4REC_EMBED_OUTPUT_DIR="/path/to/outputs/embeddings/music4all"
+export OPENAI_API_KEY="..."
+export ACE_SUNO_API_KEY="..."
+```
+
+Demo values used below:
+
+- `user_id`: `user_007XIjOr`
+- embedding variant: `rk10_dl0.08_mt0.2_mk5`
+- profile key: `evrk10_dl0.08_mt0.2_mk5_tk20_msnone_ex1_omgpt-5.4-mini`
+- example run id: `20260423T120000Z-user_007XIjOr-suno` (replace with your actual Stage C output if different)
+
+### 2) Stage A - User Embeddings
+
+```bash
+python src/embed/build_user_embeddings.py \
+  --recent-k 10 \
+  --decay-lambda 0.08 \
+  --medoid-threshold 0.2 \
+  --min-keep 5
+```
+
+Force rebuild:
+
+```bash
+python src/embed/build_user_embeddings.py --recent-k 10 --decay-lambda 0.08 --medoid-threshold 0.2 --min-keep 5 --force
+```
+
+### 3) Stage B - Retrieval Export (Raw Profile JSON)
+
+```bash
+python src/embed/export_user_profile_json.py \
+  --user-id user_007XIjOr \
+  --top-k 20 \
+  --exclude-recent \
+  --user-emb-path outputs/embeddings/music4all/user_embeddings__rk10_dl0.08_mt0.2_mk5.npy \
+  --user-ids-path outputs/embeddings/music4all/user_ids__rk10_dl0.08_mt0.2_mk5.npy \
+  -o outputs/profiles/user_007XIjOr.json
+```
+
+### 4) Stage B - Unified Profile Pipeline
+
+```bash
+python src/profile_prompt/run_profile_pipeline.py \
+  --user-id user_007XIjOr \
+  --embedding-variant rk10_dl0.08_mt0.2_mk5 \
+  --top-k 20 \
+  --exclude-recent \
+  --openai-model gpt-5.4-mini
+```
+
+Rebuild:
+
+```bash
+python src/profile_prompt/run_profile_pipeline.py --user-id user_007XIjOr --embedding-variant rk10_dl0.08_mt0.2_mk5 --top-k 20 --exclude-recent --openai-model gpt-5.4-mini --rebuild
+```
+
+### 5) Stage C - Generation
+
+```bash
+python src/generate/run_generate.py \
+  --prompt-json outputs/profiles/user_007XIjOr__evrk10_dl0.08_mt0.2_mk5_tk20_msnone_ex1_omgpt-5.4-mini_prompt.json \
+  --generation-model chirp-v4-5 \
+  --num-calls 1 \
+  --max-concurrency 1
+```
+
+### 6) Stage D1 - Rerank
+
+```bash
+python src/generate/rerank.py \
+  --manifest outputs/recSongs/user_007XIjOr/20260423T120000Z-user_007XIjOr-suno/run_manifest.json \
+  --top-k 2 \
+  --encoder auto
+```
+
+### 7) Stage D2 - Eval
+
+```bash
+python src/eval/run_eval.py \
+  --manifest outputs/recSongs/user_007XIjOr/20260423T120000Z-user_007XIjOr-suno/run_manifest.json \
+  --recent-k 20 \
+  --reference-top-k 3 \
+  --encoder finetuned \
+  --save-plot
 ```
 
 ---
 
-## 2) Where to put files
+## Frontend Demo
 
-Use this as the default file placement guide.
-
-### Dataset
-
-- Put Music4All under: `Gen4Rec/music4all/`
-- Required files include: `id_information.csv`, `id_genres.csv`, `id_tags.csv`, `listening_history.csv`
-- Audio folder should be: `Gen4Rec/music4all/audios/`
-
-### CLAP checkpoints
-
-- Put CLAP checkpoints under: `Gen4Rec/weights/clap/`
-- Base checkpoint filename: `music_audioset_epoch_15_esc_90.14.pt`
-- Fine-tuned checkpoint filename: `clap_finetuned_best.pt`
-
-### Notebooks and outputs
-
-- Notebook files: `Gen4Rec/notebooks/` or `Gen4Rec/src/data/` (for local exploration)
-- Generated embeddings/indexes from embed scripts are saved to `Gen4Rec/outputs/embeddings/music4all/` by default.
-
----
-
-## 3) Current workspace snapshot
-
-```text
-Gen4Rec/
-├── .env.example
-├── .gitignore
-├── environment.yaml
-├── readme.md
-├── notebooks/
-│   ├── music4all_data_check.ipynb
-│   └── music4allOnion_data.ipynb
-├── milestone
-├── src/
-│   ├── data/
-│   │   └── 02_download_clap.py
-│   ├── embed/
-│   │   ├── embed_music4all.py
-│   │   ├── embed_music4all_zeroshot.py
-│   │   └── finetune_clap.py
-│   ├── eval/
-│   ├── generate/
-│   └── pipeline/
-├── weights/
-├── music4all
-├── music4allA+A
-└── music4allOnion
+```bash
+conda activate gen4rec
+streamlit run app/streamlit_app.py
 ```
-
-Notes:
-- Fine-tuning script: `src/embed/finetune_clap.py`
-- Zero-shot embedding script: `src/embed/embed_music4all_zeroshot.py`
-- Standard embedding script: `src/embed/embed_music4all.py`
-- CLAP checkpoint download script: `src/data/02_download_clap.py`
-- Data-check notebooks: `notebooks/music4all_data_check.ipynb` and `notebooks/music4allOnion_data.ipynb`
-
----
-
-## 4) Repository structure (project layout)
-
-```text
-gen4rec/
-├─ README.md
-├─ environment.yaml               
-├─ .env.example                   # DATA_ROOT, MODEL_CACHE, etc.
-├─ .gitignore
-├─ Makefile                       # common commands: lint/test/run pipeline
-│
-├─ configs/
-│  ├─ default.yaml                # unified config entry
-│  ├─ data_music4all.yaml
-│  ├─ embed_clap.yaml
-│  ├─ profile.yaml
-│  ├─ generate.yaml               # Phase C
-│  ├─ eval.yaml                   # Phase D
-│  └─ prompts/
-│     ├─ profile_schema.json      # profile schema (JSON)
-│     ├─ profile_system.txt       # LLM system prompt
-│     └─ profile_user_template.j2 # Jinja2 template
-│
-├─ data/                          # usually not tracked by git
-│  ├─ raw/                        # Music4All raw index/metadata (or links)
-│  ├─ interim/                    # intermediate cleaned outputs
-│  ├─ processed/                  # processed tables (parquet/feather)
-│  └─ samples/                    # tiny samples for tests/debug
-│
-├─ src/
-│  └─ mgrec/                      # package name (customizable)
-│     ├─ __init__.py
-│     │
-│     ├─ common/
-│     │  ├─ logging.py
-│     │  ├─ config.py             # merge yaml + env
-│     │  ├─ paths.py              # unify DATA_ROOT/cache paths
-│     │  └─ utils.py
-│     │
-│     ├─ data/                    # Phase 0/1: data preparation
-│     │  ├─ music4all_loader.py   # map song_id -> audio_path
-│     │  ├─ preprocess.py         # cleaning/normalization/export
-│     │  └─ table_io.py           # write/read processed song/user tables
-│     │
-│     ├─ embed/                   # Phase A: embeddings
-│     │  ├─ clap_embedder.py      # CLAP audio encoder wrapper
-│     │  ├─ build_song_embeddings.py
-│     │  ├─ build_user_embeddings.py  # recent-K + decay + normalize
-│     │  └─ index_faiss.py        # optional Top-M retrieval index
-│     │
-│     ├─ profile/                 # Phase B: user profile
-│     │  ├─ aggregate_features.py # aggregate from Top-M songs
-│     │  ├─ schema.py             # Pydantic schema
-│     │  └─ llm_profile.py        # structured stats -> profile text/JSON
-│     │
-│     ├─ generate/                # Phase C: generation (pluggable)
-│     │  ├─ base.py               # generator interface
-│     │  ├─ prompt_builder.py     # profile JSON -> generation prompt
-│     │  ├─ musicgen.py           # example: MusicGen wrapper
-│     │  ├─ audioldm.py           # example: AudioLDM wrapper
-│     │  └─ suno.py               # example: Suno wrapper
-│     │
-│     ├─ rerank/                  # Phase D(1): rerank/selection
-│     │  ├─ scorer.py             # score = cos(CLAP(gen), E_u) + objectives
-│     │  └─ selector.py           # top-1/top-k, diversity penalties
-│     │
-│     ├─ eval/                    # Phase D(2): evaluation
-│     │  ├─ metrics.py            # centroid sim, nn sim, density, etc.
-│     │  ├─ fad.py                # optional FAD interface
-│     │  ├─ reports.py            # markdown/json/csv reports
-│     │  └─ ablation.py           # baseline comparisons
-│     │
-│     └─ pipeline/
-│        ├─ run_embed.py          # run Phase A
-│        ├─ run_profile.py        # run Phase B
-│        ├─ run_generate.py       # run Phase C
-│        └─ run_eval.py           # run Phase D
-│
-├─ scripts/
-│  ├─ init_data.sh
-│  ├─ ingest_music4all.py
-│  ├─ build_embeddings.py
-│  ├─ build_profiles.py
-│  ├─ generate_candidates.py
-│  └─ eval_run.py
-│
-├─ notebooks/                     # exploration only, not main pipeline
-│  ├─ 01_data_sanity.ipynb
-│  ├─ 02_embedding_space_viz.ipynb
-│  ├─ 03_profile_examples.ipynb
-│  └─ 04_eval_plots.ipynb
-│
-├─ tests/
-│  ├─ test_user_embedding.py
-│  ├─ test_profile_schema.py
-│  └─ test_rerank_metrics.py
-│
-└─ outputs/                       # not tracked by git
-	├─ audio/
-	├─ profiles/
-	├─ embeddings/
-	└─ reports/
-├── milestone
-```
-
