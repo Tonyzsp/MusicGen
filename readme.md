@@ -89,11 +89,11 @@ Then activate:
 conda activate gen4rec
 ```
 
-Optional API keys:
+Required API keys (put them in `.env`):
 
-```bash
-export OPENAI_API_KEY="..."
-export ACE_SUNO_API_KEY="..."
+```env
+OPENAI_API_KEY=...
+ACE_SUNO_API_KEY=...
 ```
 
 Demo values used below:
