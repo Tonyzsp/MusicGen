@@ -12,28 +12,8 @@ music4allA+A
 # Model weights / checkpoints
 weights/
 
-# Generated outputs: commit *.npy under outputs/embeddings/music4all/ except zero-shot (very large)
-outputs/*
-!outputs/embeddings/
-outputs/embeddings/*
-!outputs/embeddings/music4all/
-outputs/embeddings/music4all/*
-!outputs/embeddings/music4all/*.npy
-outputs/embeddings/music4all/music4all_embeddings_zeroshot.npy
-
-# Database files
-src/data/*.db
-src/data/*.sqlite
-src/data/*.sqlite3
-src/data/*.db-journal
-src/data/*.sqlite-journal
-src/data/*.sqlite3-journal
-src/data/*.db-wal
-src/data/*.sqlite-wal
-src/data/*.sqlite3-wal
-src/data/*.db-shm
-src/data/*.sqlite-shm
-src/data/*.sqlite3-shm
+# Generated outputs: do not commit any outputs
+outputs/
 
 # Python cache
 __pycache__/

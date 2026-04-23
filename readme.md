@@ -77,14 +77,9 @@ Use this as the default file placement guide.
 - Base checkpoint filename: `music_audioset_epoch_15_esc_90.14.pt`
 - Fine-tuned checkpoint filename: `clap_finetuned_best.pt`
 
-### Database
-
-- Default SQLite output from DB builder: `Gen4Rec/music4all.db`
-- If you manually create another DB (for experiments), keep it in one place (recommended: `Gen4Rec/src/data/`) and use an explicit filename.
-
 ### Notebooks and outputs
 
-- Notebook files: `Gen4Rec/notebooks/` or `Gen4Rec/src/data/` (for SQL exploration)
+- Notebook files: `Gen4Rec/notebooks/` or `Gen4Rec/src/data/` (for local exploration)
 - Generated embeddings/indexes from embed scripts are saved to `Gen4Rec/outputs/embeddings/music4all/` by default.
 
 ---
@@ -103,9 +98,7 @@ Gen4Rec/
 ├── milestone
 ├── src/
 │   ├── data/
-│   │   ├── 01_build_music4all_db.py
-│   │   ├── 02_download_clap.py
-│   │   └── query.ipynb
+│   │   └── 02_download_clap.py
 │   ├── embed/
 │   │   ├── embed_music4all.py
 │   │   ├── embed_music4all_zeroshot.py
@@ -123,9 +116,7 @@ Notes:
 - Fine-tuning script: `src/embed/finetune_clap.py`
 - Zero-shot embedding script: `src/embed/embed_music4all_zeroshot.py`
 - Standard embedding script: `src/embed/embed_music4all.py`
-- Music4All DB build script: `src/data/01_build_music4all_db.py`
 - CLAP checkpoint download script: `src/data/02_download_clap.py`
-- SQL exploration notebook: `src/data/query.ipynb`
 - Data-check notebooks: `notebooks/music4all_data_check.ipynb` and `notebooks/music4allOnion_data.ipynb`
 
 ---
@@ -136,7 +127,7 @@ Notes:
 gen4rec/
 ├─ README.md
 ├─ environment.yaml               
-├─ .env.example                   # DB_URL, DATA_ROOT, MODEL_CACHE, etc.
+├─ .env.example                   # DATA_ROOT, MODEL_CACHE, etc.
 ├─ .gitignore
 ├─ Makefile                       # common commands: lint/test/run pipeline
 │
@@ -158,11 +149,6 @@ gen4rec/
 │  ├─ processed/                  # processed tables (parquet/feather)
 │  └─ samples/                    # tiny samples for tests/debug
 │
-├─ db/
-│  ├─ schema.sql                  # database schema
-│  ├─ seeds/                      # optional demo seed data
-│  └─ migrations/                 # optional alembic migrations
-│
 ├─ src/
 │  └─ mgrec/                      # package name (customizable)
 │     ├─ __init__.py
@@ -173,10 +159,10 @@ gen4rec/
 │     │  ├─ paths.py              # unify DATA_ROOT/cache paths
 │     │  └─ utils.py
 │     │
-│     ├─ data/                    # Phase 0/1: data & DB
+│     ├─ data/                    # Phase 0/1: data preparation
 │     │  ├─ music4all_loader.py   # map song_id -> audio_path
 │     │  ├─ preprocess.py         # cleaning/normalization/export
-│     │  └─ db_io.py              # write songs/users/events/tags to SQL
+│     │  └─ table_io.py           # write/read processed song/user tables
 │     │
 │     ├─ embed/                   # Phase A: embeddings
 │     │  ├─ clap_embedder.py      # CLAP audio encoder wrapper
@@ -213,7 +199,7 @@ gen4rec/
 │        └─ run_eval.py           # run Phase D
 │
 ├─ scripts/
-│  ├─ init_db.sh
+│  ├─ init_data.sh
 │  ├─ ingest_music4all.py
 │  ├─ build_embeddings.py
 │  ├─ build_profiles.py
