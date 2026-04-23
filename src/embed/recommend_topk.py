@@ -29,8 +29,8 @@ class Config:
     )
     SONG_EMB_PATH = resolve_path("GEN4REC_SONG_EMB_PATH", Path(EMBEDDINGS_DIR) / "music4all_embeddings.npy")
     SONG_IDS_PATH = resolve_path("GEN4REC_SONG_IDS_PATH", Path(EMBEDDINGS_DIR) / "music4all_ids.npy")
-    USER_EMB_PATH = resolve_path("GEN4REC_USER_EMB_PATH", Path(EMBEDDINGS_DIR) / "user_embeddings.npy")
-    USER_IDS_PATH = resolve_path("GEN4REC_USER_IDS_PATH", Path(EMBEDDINGS_DIR) / "user_ids.npy")
+    USER_EMB_PATH = os.environ.get("GEN4REC_USER_EMB_PATH")
+    USER_IDS_PATH = os.environ.get("GEN4REC_USER_IDS_PATH")
     ID_INFORMATION_PATH = resolve_path(
         "GEN4REC_ID_INFORMATION_PATH",
         Path(DATASET_PATH) / "id_information.csv",
@@ -116,8 +116,16 @@ def load_audio_metadata(path: str) -> pd.DataFrame:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Recommend top-k songs for a user from embedding space.")
     parser.add_argument("--user-id", required=True, help="Target user ID, e.g. user_007XIjOr")
-    parser.add_argument("--top-k", type=int, default=20)
+    parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument(
+        "--min-similarity",
+        type=float,
+        default=None,
+        help="Optional cosine threshold; keep only songs with similarity >= this value.",
+    )
     parser.add_argument("--exclude-recent", action="store_true", help="Exclude songs the user has already listened to")
+    parser.add_argument("--user-emb-path", type=str, required=True, help="Path to user_embeddings__<variant>.npy")
+    parser.add_argument("--user-ids-path", type=str, required=True, help="Path to user_ids__<variant>.npy")
     parser.add_argument(
         "--with-info",
         action="store_true",
@@ -133,8 +141,15 @@ def main() -> None:
     song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
     # IDs may be stored as object arrays depending on how npy was created.
     song_ids = np.load(ensure_local_file(Config.SONG_IDS_PATH, "Song ID array"), allow_pickle=True).astype(str)
-    user_embs = np.load(ensure_local_file(Config.USER_EMB_PATH, "User embedding matrix")).astype(np.float32)
-    user_ids = np.load(ensure_local_file(Config.USER_IDS_PATH, "User ID array"), allow_pickle=True).astype(str)
+    resolved_user_emb_path = args.user_emb_path or Config.USER_EMB_PATH
+    resolved_user_ids_path = args.user_ids_path or Config.USER_IDS_PATH
+    if not resolved_user_emb_path or not resolved_user_ids_path:
+        raise FileNotFoundError(
+            "User embedding files are not configured. Pass both --user-emb-path and --user-ids-path "
+            "or set GEN4REC_USER_EMB_PATH / GEN4REC_USER_IDS_PATH."
+        )
+    user_embs = np.load(ensure_local_file(resolved_user_emb_path, "User embedding matrix")).astype(np.float32)
+    user_ids = np.load(ensure_local_file(resolved_user_ids_path, "User ID array"), allow_pickle=True).astype(str)
 
     user_to_idx = {uid: i for i, uid in enumerate(user_ids)}
     if args.user_id not in user_to_idx:
@@ -152,8 +167,16 @@ def main() -> None:
             listened_idxs = [song_to_idx[sid] for sid in listened if sid in song_to_idx]
             scores[np.array(listened_idxs, dtype=np.int64)] = -1e9
 
+    if args.min_similarity is not None:
+        valid_mask = scores >= float(args.min_similarity)
+        filtered_count = int(np.sum(valid_mask))
+        if filtered_count > 0:
+            scores = np.where(valid_mask, scores, -1e9)
+
     top_k = max(1, args.top_k)
-    idx = np.argpartition(-scores, top_k - 1)[:top_k]
+    valid_count = int(np.sum(scores > -1e8))
+    k_eff = min(top_k, max(1, valid_count))
+    idx = np.argpartition(-scores, k_eff - 1)[:k_eff]
     idx = idx[np.argsort(-scores[idx])]
 
     result = pd.DataFrame(

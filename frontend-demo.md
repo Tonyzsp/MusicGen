@@ -27,8 +27,8 @@ The demo expects the same local artifacts used by the current pipeline:
 - `music4all/audios/`
 - `outputs/embeddings/music4all/music4all_embeddings.npy`
 - `outputs/embeddings/music4all/music4all_ids.npy`
-- `outputs/embeddings/music4all/user_embeddings.npy`
-- `outputs/embeddings/music4all/user_ids.npy`
+- `outputs/embeddings/music4all/user_embeddings__<VARIANT>.npy`
+- `outputs/embeddings/music4all/user_ids__<VARIANT>.npy`
 
 Optional but strongly recommended:
 
@@ -57,9 +57,10 @@ Optional path overrides still work through the existing `GEN4REC_*` environment 
 
 1. Launch the app.
 2. Select or enter a `user_id`.
+   - Also choose a `User embedding variant` in the sidebar.
 3. Click `Load profile` to build or load:
    - `outputs/profiles/<USER_ID>.json`
-   - `outputs/profiles/<USER_ID>_summary.json`
+   - `outputs/profiles/<USER_ID>_topk_summary.json`
    - `outputs/profiles/<USER_ID>_prompt.json`
 4. Review the listener profile and summary.
 5. Set generation controls and click `Generate songs`.

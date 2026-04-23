@@ -40,8 +40,8 @@ class Config:
     )
     SONG_EMB_PATH = resolve_path("GEN4REC_SONG_EMB_PATH", Path(EMBEDDINGS_DIR) / "music4all_embeddings.npy")
     SONG_IDS_PATH = resolve_path("GEN4REC_SONG_IDS_PATH", Path(EMBEDDINGS_DIR) / "music4all_ids.npy")
-    USER_EMB_PATH = resolve_path("GEN4REC_USER_EMB_PATH", Path(EMBEDDINGS_DIR) / "user_embeddings.npy")
-    USER_IDS_PATH = resolve_path("GEN4REC_USER_IDS_PATH", Path(EMBEDDINGS_DIR) / "user_ids.npy")
+    USER_EMB_PATH = os.environ.get("GEN4REC_USER_EMB_PATH")
+    USER_IDS_PATH = os.environ.get("GEN4REC_USER_IDS_PATH")
     ID_INFORMATION_PATH = resolve_path(
         "GEN4REC_ID_INFORMATION_PATH",
         Path(DATASET_PATH) / "id_information.csv",
@@ -143,7 +143,12 @@ def jsonable_value(v: Any) -> Any:
 
 def build_export_payload(
     user_id: str,
-    top_k: int,
+    top_k_requested: int,
+    top_k_returned: int,
+    min_similarity: float | None,
+    threshold_relaxed: bool,
+    candidate_count_before_filter: int,
+    candidate_count_after_filter: int,
     song_ids: np.ndarray,
     scores: np.ndarray,
     ranks: np.ndarray,
@@ -201,10 +206,15 @@ def build_export_payload(
     return {
         "schema_version": "1.1",
         "user_id": user_id,
-        "top_k": top_k,
+        "top_k": top_k_returned,
         "retrieval": {
             "space": "clap_embedding_cosine",
             "note": "similarity_score is dot product on L2-normalized 512-d vectors (equals cosine similarity).",
+            "top_k_requested": top_k_requested,
+            "min_similarity": min_similarity,
+            "threshold_relaxed": threshold_relaxed,
+            "candidate_count_before_filter": candidate_count_before_filter,
+            "candidate_count_after_filter": candidate_count_after_filter,
         },
         "songs": songs_out,
     }
@@ -214,12 +224,22 @@ def export_user_profile_payload(
     *,
     user_id: str,
     top_k: int = 20,
+    min_similarity: float | None = None,
+    user_emb_path: str | None = None,
+    user_ids_path: str | None = None,
     exclude_recent: bool = False,
 ) -> dict[str, Any]:
     song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
     song_ids_arr = np.load(ensure_local_file(Config.SONG_IDS_PATH, "Song ID array"), allow_pickle=True).astype(str)
-    user_embs = np.load(ensure_local_file(Config.USER_EMB_PATH, "User embedding matrix")).astype(np.float32)
-    user_ids = np.load(ensure_local_file(Config.USER_IDS_PATH, "User ID array"), allow_pickle=True).astype(str)
+    resolved_user_emb_path = user_emb_path or Config.USER_EMB_PATH
+    resolved_user_ids_path = user_ids_path or Config.USER_IDS_PATH
+    if not resolved_user_emb_path or not resolved_user_ids_path:
+        raise FileNotFoundError(
+            "User embedding files are not configured. Pass both --user-emb-path and --user-ids-path "
+            "or set GEN4REC_USER_EMB_PATH / GEN4REC_USER_IDS_PATH."
+        )
+    user_embs = np.load(ensure_local_file(resolved_user_emb_path, "User embedding matrix")).astype(np.float32)
+    user_ids = np.load(ensure_local_file(resolved_user_ids_path, "User ID array"), allow_pickle=True).astype(str)
 
     user_to_idx = {uid: i for i, uid in enumerate(user_ids)}
     if user_id not in user_to_idx:
@@ -227,6 +247,7 @@ def export_user_profile_payload(
     user_vec = user_embs[user_to_idx[user_id]]
 
     scores = song_embs @ user_vec
+    scores_for_rank = scores.copy()
 
     if exclude_recent:
         history = load_listening_history(ensure_local_file(Config.LISTENING_HISTORY_PATH, "Listening history table"))
@@ -234,13 +255,27 @@ def export_user_profile_payload(
         if listened:
             song_to_idx = {sid: i for i, sid in enumerate(song_ids_arr)}
             listened_idxs = [song_to_idx[sid] for sid in listened if sid in song_to_idx]
-            scores = scores.copy()
-            scores[np.array(listened_idxs, dtype=np.int64)] = -1e9
+            scores_for_rank = scores_for_rank.copy()
+            scores_for_rank[np.array(listened_idxs, dtype=np.int64)] = -1e9
+
+    threshold_relaxed = False
+    candidate_count_before_filter = int(np.sum(scores_for_rank > -1e8))
+    if min_similarity is not None:
+        valid_mask = (scores_for_rank > -1e8) & (scores_for_rank >= float(min_similarity))
+        candidate_count_after_filter = int(np.sum(valid_mask))
+        if candidate_count_after_filter > 0:
+            scores_for_rank = np.where(valid_mask, scores_for_rank, -1e9)
+        else:
+            threshold_relaxed = True
+            candidate_count_after_filter = candidate_count_before_filter
+    else:
+        candidate_count_after_filter = candidate_count_before_filter
 
     k = max(1, top_k)
-    idx = np.argpartition(-scores, k - 1)[:k]
-    idx = idx[np.argsort(-scores[idx])]
-    sel_scores = scores[idx].astype(np.float64)
+    k_eff = min(k, max(1, candidate_count_after_filter))
+    idx = np.argpartition(-scores_for_rank, k_eff - 1)[:k_eff]
+    idx = idx[np.argsort(-scores_for_rank[idx])]
+    sel_scores = scores_for_rank[idx].astype(np.float64)
     sel_song_ids = song_ids_arr[idx]
     ranks = np.arange(1, len(idx) + 1)
 
@@ -251,7 +286,12 @@ def export_user_profile_payload(
 
     return build_export_payload(
         user_id=user_id,
-        top_k=k,
+        top_k_requested=k,
+        top_k_returned=int(k_eff),
+        min_similarity=min_similarity,
+        threshold_relaxed=threshold_relaxed,
+        candidate_count_before_filter=candidate_count_before_filter,
+        candidate_count_after_filter=candidate_count_after_filter,
         song_ids=sel_song_ids,
         scores=sel_scores,
         ranks=ranks,
@@ -275,7 +315,15 @@ def main() -> None:
         dest="top_k",
         help="Number of nearest songs to retrieve (Top-K). Alias --top-m is deprecated but still works.",
     )
+    parser.add_argument(
+        "--min-similarity",
+        type=float,
+        default=None,
+        help="Optional cosine threshold; keep only songs with similarity >= this value.",
+    )
     parser.add_argument("--exclude-recent", action="store_true", help="Exclude songs already in user listening history.")
+    parser.add_argument("--user-emb-path", type=str, required=True, help="Path to user_embeddings__<variant>.npy")
+    parser.add_argument("--user-ids-path", type=str, required=True, help="Path to user_ids__<variant>.npy")
     parser.add_argument(
         "-o",
         "--output",
@@ -288,6 +336,9 @@ def main() -> None:
     payload = export_user_profile_payload(
         user_id=args.user_id,
         top_k=args.top_k,
+        min_similarity=args.min_similarity,
+        user_emb_path=args.user_emb_path,
+        user_ids_path=args.user_ids_path,
         exclude_recent=args.exclude_recent,
     )
 

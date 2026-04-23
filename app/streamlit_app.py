@@ -3,6 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import importlib
 import streamlit as st
 
 CURRENT_FILE = Path(__file__).resolve()
@@ -13,14 +17,31 @@ if str(REPO_ROOT) not in sys.path:
 from app.services.artifact_service import (
     EvalArtifacts,
     GenerationRunArtifacts,
+    PROFILES_ROOT,
     ProfileArtifacts,
     load_eval_artifacts,
-    load_latest_generation_run,
     load_profile_artifacts,
     read_binary_file,
 )
-from app.services.pipeline_service import build_or_load_profile, load_available_users, run_generation_for_user
+from app.services.pipeline_service import (
+    build_user_embedding_variant,
+    build_or_load_profile,
+    build_profile_variant_tag,
+    list_user_embedding_variants,
+    load_available_users,
+    resolve_user_embedding_paths,
+    run_generation_for_user,
+)
 from app.services.viz_service import build_user_generation_figure
+from src.embed.build_user_embeddings import (
+    Config as UserEmbConfig,
+    ensure_local_file as ensure_useremb_local_file,
+    ensure_song_ids as ensure_useremb_song_ids,
+    load_listening_history as load_useremb_history,
+)
+from src.embed.recommend_topk import Config as RecConfig
+from src.embed.recommend_topk import load_song_metadata
+from src.generate.artifacts import sanitize_segment
 
 
 st.set_page_config(
@@ -30,8 +51,67 @@ st.set_page_config(
 
 
 @st.cache_data(show_spinner=False)
-def get_available_users() -> list[str]:
-    return load_available_users()
+def get_available_embedding_variants() -> list[str]:
+    return list_user_embedding_variants()
+
+
+@st.cache_data(show_spinner=False)
+def get_available_users(embedding_variant: str) -> list[str]:
+    return load_available_users(embedding_variant)
+
+
+@st.cache_data(show_spinner=False)
+def list_profile_variants_for_user(user_id: str) -> list[str]:
+    safe_user_id = sanitize_segment(user_id)
+    if not safe_user_id:
+        return []
+    variants: set[str] = set()
+    for path in PROFILES_ROOT.glob(f"{safe_user_id}__*.json"):
+        stem = path.stem
+        prefix = f"{safe_user_id}__"
+        if not stem.startswith(prefix):
+            continue
+        variant = stem[len(prefix) :]
+        if variant.endswith("_prompt") or variant.endswith("_validation") or variant.endswith("_topk_summary"):
+            continue
+        variants.add(variant)
+    return sorted(variants)
+
+
+@st.cache_data(show_spinner=False)
+def get_all_known_users() -> list[str]:
+    history_df = load_useremb_history(
+        ensure_useremb_local_file(UserEmbConfig.LISTENING_HISTORY_PATH, "Listening history table")
+    )
+    return sorted(history_df["user_id"].astype(str).unique().tolist())
+
+
+@st.cache_resource(show_spinner=False)
+def get_phase1_static_resources() -> dict[str, object]:
+    song_embs = np.load(ensure_useremb_local_file(UserEmbConfig.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
+    song_ids = ensure_useremb_song_ids(
+        UserEmbConfig.SONG_IDS_PATH,
+        UserEmbConfig.ID_GENRES_PATH,
+        expected_n=song_embs.shape[0],
+    )
+    history_df = load_useremb_history(ensure_useremb_local_file(UserEmbConfig.LISTENING_HISTORY_PATH, "Listening history table"))
+    info_df = load_song_metadata(ensure_useremb_local_file(RecConfig.ID_INFORMATION_PATH, "Song information table"))
+    info_df = info_df.rename(columns={"id": "song_id"})
+    song2idx = {str(sid): i for i, sid in enumerate(song_ids.astype(str))}
+    return {
+        "song_embs": song_embs,
+        "history_df": history_df,
+        "info_df": info_df,
+        "song2idx": song2idx,
+    }
+
+
+@st.cache_resource(show_spinner=False)
+def get_variant_user_embeddings(embedding_variant: str) -> tuple[np.ndarray, np.ndarray]:
+    user_emb_path, user_ids_path = resolve_user_embedding_paths(embedding_variant)
+    user_embs = np.load(user_emb_path).astype(np.float32)
+    user_ids = np.load(user_ids_path, allow_pickle=True).astype(str)
+    return user_embs, user_ids
 
 
 def _format_metric_value(value: float | int | None) -> str:
@@ -50,6 +130,10 @@ def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
         return
 
     st.subheader("LLM listener profile")
+    st.caption(
+        "This section is generated from retrieved songs in Phase 2 (metadata/tags + summary), "
+        "then refined by the selected LLM into profile text and style keywords."
+    )
     st.write(prompt.get("profile_paragraph", ""))
 
     left, right = st.columns([1, 1])
@@ -87,6 +171,230 @@ def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
             if validation.get("human_readable_summary"):
                 st.write(validation["human_readable_summary"])
             st.json(validation)
+
+
+def _extract_llm_generation_prompt(profile_artifacts: ProfileArtifacts) -> str:
+    prompt_payload = profile_artifacts.prompt or {}
+    return (
+        prompt_payload.get("suno_generation_prompt")
+        or prompt_payload.get("generation_prompt")
+        or prompt_payload.get("prompt")
+        or ""
+    )
+
+
+def _render_retrieval_snapshot(profile_artifacts: ProfileArtifacts) -> None:
+    raw = profile_artifacts.raw_profile or {}
+    retrieval = raw.get("retrieval") or {}
+    songs = raw.get("songs") or []
+    if not raw:
+        st.info("No retrieval JSON yet. Build/load profile first.")
+        return
+
+    stats = st.columns(4)
+    stats[0].metric("Top-k requested", retrieval.get("top_k_requested", raw.get("top_k")))
+    stats[1].metric("Top-k returned", raw.get("top_k"))
+    stats[2].metric("Min similarity", retrieval.get("min_similarity"))
+    stats[3].metric("Candidates after filter", retrieval.get("candidate_count_after_filter"))
+
+    if retrieval.get("threshold_relaxed"):
+        st.warning("Similarity threshold was relaxed because no songs passed the cutoff.")
+
+    if songs:
+        total_songs = len(songs)
+        preview_limit = min(10, total_songs)
+        st.caption(f"Showing first {preview_limit} songs (out of {total_songs} returned).")
+        preview = []
+        for row in songs[:preview_limit]:
+            info = row.get("info") or {}
+            metadata = row.get("metadata") or {}
+            genres = row.get("genres")
+            tags = row.get("tags")
+            preview.append(
+                {
+                    "rank": row.get("rank"),
+                    "song_id": row.get("song_id"),
+                    "artist": info.get("artist"),
+                    "song": info.get("song"),
+                    "score": row.get("similarity_score"),
+                    "genres": ", ".join(genres) if isinstance(genres, list) else genres,
+                    "tags": ", ".join(tags) if isinstance(tags, list) else tags,
+                    "danceability": metadata.get("danceability"),
+                    "energy": metadata.get("energy"),
+                    "valence": metadata.get("valence"),
+                    "tempo": metadata.get("tempo"),
+                    "release": metadata.get("release"),
+                }
+            )
+        st.dataframe(preview, width="stretch")
+        with st.expander("Show more retrieval rows"):
+            show_n = st.slider(
+                "Rows to display",
+                min_value=1,
+                max_value=total_songs,
+                value=min(20, total_songs),
+                step=1,
+                key=f"retrieval_rows::{profile_artifacts.user_id}",
+            )
+            full_rows = []
+            for row in songs[:show_n]:
+                info = row.get("info") or {}
+                metadata = row.get("metadata") or {}
+                genres = row.get("genres")
+                tags = row.get("tags")
+                full_rows.append(
+                    {
+                        "rank": row.get("rank"),
+                        "song_id": row.get("song_id"),
+                        "artist": info.get("artist"),
+                        "song": info.get("song"),
+                        "score": row.get("similarity_score"),
+                        "genres": ", ".join(genres) if isinstance(genres, list) else genres,
+                        "tags": ", ".join(tags) if isinstance(tags, list) else tags,
+                        "danceability": metadata.get("danceability"),
+                        "energy": metadata.get("energy"),
+                        "valence": metadata.get("valence"),
+                        "tempo": metadata.get("tempo"),
+                        "release": metadata.get("release"),
+                    }
+                )
+            st.dataframe(full_rows, width="stretch")
+        with st.expander("Raw retrieval JSON"):
+            st.json(raw)
+    else:
+        st.info("No songs in retrieval payload.")
+
+
+def _render_procedure_brief() -> None:
+    st.markdown("### Pipeline overview")
+    st.markdown(
+        """
+```text
+[Phase 1: User Embedding]
+listening_history + song CLAP embeddings
+-> pick recent-k songs from listening history
+-> remove outlier songs (medoid filter)
+-> weighted average (more recent + repeated songs get more weight)
+-> normalize user embedding
+
+                ↓
+
+[Phase 2: Retrieval + Prompt]
+user embedding
+-> find nearest songs by cosine (top-k, min similarity)
+-> attach metadata + genres/tags from CSV
+-> export raw profile JSON
+-> ask LLM to refine a better music-generation prompt
+
+                ↓
+
+[Phase 3: Generation + Selection]
+prompt
+-> generate multiple songs with Suno
+-> rerank by CLAP similarity to user embedding
+-> diversity filter + evaluation + visualization
+```
+"""
+    )
+
+
+def _compute_phase1_pca_data(
+    *,
+    user_id: str,
+    embedding_variant: str,
+    recent_k: int,
+    medoid_threshold: float,
+) -> tuple[pd.DataFrame, list[dict[str, object]]]:
+    phase1_resources = get_phase1_static_resources()
+    song_embs = phase1_resources["song_embs"]
+    history_df = phase1_resources["history_df"]
+    info_df = phase1_resources["info_df"]
+    song2idx = phase1_resources["song2idx"]
+    user_df = history_df.loc[history_df["user_id"] == user_id].copy()
+    user_df = user_df.sort_values("timestamp", ascending=False, na_position="last")
+    recent = user_df.head(max(1, int(recent_k))).copy()
+    if recent.empty:
+        raise ValueError("No listening history rows found for selected user.")
+    recent["rank"] = np.arange(len(recent), dtype=np.int32)
+    agg = (
+        recent.groupby("song_id", as_index=False)
+        .agg(min_rank=("rank", "min"), play_count=("song_id", "count"))
+        .sort_values("min_rank")
+        .reset_index(drop=True)
+    )
+    agg = agg.merge(info_df[["song_id", "artist", "song", "album_name"]], on="song_id", how="left")
+    agg = agg[agg["song_id"].astype(str).isin(song2idx)].reset_index(drop=True)
+    if agg.empty:
+        raise ValueError("No recent songs matched song embedding IDs.")
+
+    idxs = np.array([song2idx[str(sid)] for sid in agg["song_id"].tolist()], dtype=np.int64)
+    embs = song_embs[idxs].astype(np.float32)
+    sims = embs @ embs.T
+    mean_sims = sims.mean(axis=1)
+    medoid_local_idx = int(np.argmax(mean_sims))
+    medoid_song_id = str(agg.iloc[medoid_local_idx]["song_id"])
+    keep_mask = sims[medoid_local_idx] >= float(medoid_threshold)
+
+    user_embs, user_ids = get_variant_user_embeddings(embedding_variant)
+    user_to_idx = {uid: idx for idx, uid in enumerate(user_ids)}
+    if user_id not in user_to_idx:
+        raise ValueError(f"user_id not found in selected embedding variant: {user_id}")
+    user_vec = user_embs[user_to_idx[user_id]].astype(np.float32)
+
+    labels: list[str] = []
+    kinds: list[str] = []
+    meta_rows: list[dict[str, object]] = []
+    vecs: list[np.ndarray] = []
+    for i, row in agg.iterrows():
+        sid = str(row["song_id"])
+        kind = "medoid" if i == medoid_local_idx else ("kept" if bool(keep_mask[i]) else "filtered")
+        cos_medoid = float(sims[medoid_local_idx, i])
+        artist = str(row.get("artist") or "Unknown")
+        song_name = str(row.get("song") or sid)
+        album_name = str(row.get("album_name") or "—")
+        vecs.append(embs[i])
+        labels.append(f"{artist} - {song_name}")
+        kinds.append(kind)
+        meta_rows.append(
+            {
+                "type": kind,
+                "song_id": sid,
+                "artist": artist,
+                "song": song_name,
+                "album": album_name,
+                "recency_rank": int(row["min_rank"]),
+                "repeat_count": int(row["play_count"]),
+                "cos_to_medoid": round(cos_medoid, 4),
+                "is_medoid": sid == medoid_song_id,
+            }
+        )
+    vecs.append(user_vec)
+    labels.append("USER_EMBEDDING")
+    kinds.append("user")
+
+    X = np.vstack(vecs).astype(np.float64)
+    X = X - X.mean(axis=0, keepdims=True)
+    U, S, _ = np.linalg.svd(X, full_matrices=False)
+    coords = U[:, :2] * S[:2]
+
+    plot_rows: list[dict[str, object]] = []
+    for i, (kind, label) in enumerate(zip(kinds, labels)):
+        plot_rows.append(
+            {
+                "x": float(coords[i, 0]),
+                "y": float(coords[i, 1]),
+                "group": kind,
+                "label": label,
+                "song_id": meta_rows[i]["song_id"] if i < len(meta_rows) else "USER",
+                "artist": meta_rows[i]["artist"] if i < len(meta_rows) else "USER",
+                "song": meta_rows[i]["song"] if i < len(meta_rows) else "USER_EMBEDDING",
+                "album": meta_rows[i]["album"] if i < len(meta_rows) else "—",
+                "recency_rank": meta_rows[i]["recency_rank"] if i < len(meta_rows) else None,
+                "repeat_count": meta_rows[i]["repeat_count"] if i < len(meta_rows) else None,
+                "cos_to_medoid": meta_rows[i]["cos_to_medoid"] if i < len(meta_rows) else None,
+            }
+        )
+    return pd.DataFrame(plot_rows), meta_rows
 
 
 def _render_track_card(track, index: int) -> None:
@@ -315,90 +623,568 @@ def _render_visualization_section(user_id: str, run_artifacts: GenerationRunArti
 
 def main() -> None:
     st.title("Gen4Rec Streamlit Demo")
-    st.write(
-        "A local demo for user profile analysis, one-click Suno generation, reranking, "
-        "automatic eval, and embedding-space visualization."
-    )
+
+    global_user_id = st.session_state.get("selected_user_id", "")
+    with st.sidebar:
+        st.header("Controls")
+        try:
+            all_known_users = get_all_known_users()
+        except Exception:
+            all_known_users = []
+        if all_known_users:
+            selected_idx = all_known_users.index(global_user_id) if global_user_id in all_known_users else 0
+            global_user_id = st.selectbox("Select user", all_known_users, index=selected_idx)
+            st.session_state["selected_user_id"] = global_user_id
+        else:
+            st.warning("No users found in listening history.")
+
+        view_section = st.radio(
+            "View section",
+            options=[
+                "Intro",
+                "Phase 1 - User Embedding",
+                "Phase 2 - Retrieval + Prompt",
+                "Phase 3 - Generate + Rerank + Evaluate",
+            ],
+            index=0,
+            horizontal=False,
+            help="Show only one phase to reduce on-screen clutter.",
+        )
+        show_phase1_controls = view_section == "Phase 1 - User Embedding"
+        show_phase2_controls = view_section == "Phase 2 - Retrieval + Prompt"
+        show_phase3_controls = view_section == "Phase 3 - Generate + Rerank + Evaluate"
+
+        phase1_user_id = st.session_state.get("phase1_user_id", "")
+        phase1_embedding_variant = st.session_state.get("phase1_embedding_variant", "")
+        build_recent_k = 10
+        build_decay_lambda = 0.08
+        build_medoid_threshold = 0.2
+        build_min_keep = 5
+        build_embedding_clicked = False
+        if show_phase1_controls:
+            st.markdown("### Phase 1: User embedding")
+            phase1_user_id = global_user_id
+            st.session_state["phase1_user_id"] = phase1_user_id
+
+            phase1_variants = get_available_embedding_variants()
+            phase1_variant_options = ["(none)"] + phase1_variants
+            selected_phase1_variant = phase1_embedding_variant if phase1_embedding_variant in phase1_variants else "(none)"
+            phase1_variant_idx = phase1_variant_options.index(selected_phase1_variant)
+            selected_phase1_variant = st.selectbox(
+                "Embedding variant for Phase 1 PCA (optional)",
+                phase1_variant_options,
+                index=phase1_variant_idx,
+            )
+            phase1_embedding_variant = "" if selected_phase1_variant == "(none)" else selected_phase1_variant
+            st.session_state["phase1_embedding_variant"] = phase1_embedding_variant
+
+            build_recent_k = st.number_input(
+                "Recent-k",
+                min_value=1,
+                max_value=200,
+                value=10,
+                step=1,
+                help="Use the most recent K listening events per user for embedding construction.",
+            )
+            build_decay_lambda = st.number_input(
+                "Decay lambda",
+                min_value=0.0,
+                max_value=2.0,
+                value=0.08,
+                step=0.01,
+                help="Recency weight: w_time = exp(-lambda * rank), where rank=0 is most recent.",
+            )
+            build_medoid_threshold = st.number_input(
+                "Medoid threshold",
+                min_value=-1.0,
+                max_value=1.0,
+                value=0.2,
+                step=0.05,
+                help="Medoid = song with max average cosine; keep songs with cos(e_i, e_medoid) >= threshold.",
+            )
+            build_min_keep = st.number_input(
+                "Min keep",
+                min_value=1,
+                max_value=100,
+                value=5,
+                step=1,
+                help="After coherence filtering, keep at least this many nearest-to-medoid songs.",
+            )
+            build_embedding_clicked = st.button("Build user embedding variant")
+
+    if build_embedding_clicked:
+        with st.spinner("Building user embedding variant..."):
+            try:
+                build_result = build_user_embedding_variant(
+                    recent_k=int(build_recent_k),
+                    decay_lambda=float(build_decay_lambda),
+                    medoid_threshold=float(build_medoid_threshold),
+                    min_keep=int(build_min_keep),
+                )
+            except Exception as exc:
+                st.error(str(exc))
+                st.stop()
+        get_available_embedding_variants.clear()
+        get_available_users.clear()
+        if build_result["created"]:
+            st.success(f"Built embedding variant: {build_result['variant']}")
+        else:
+            st.info(f"Variant already exists, reused: {build_result['variant']}")
+        st.rerun()
 
     try:
-        available_users = get_available_users()
+        embedding_variants = get_available_embedding_variants()
     except Exception as exc:
         st.error(str(exc))
         st.stop()
 
-    if not available_users:
-        st.error("No users are available in `outputs/embeddings/music4all/user_ids.npy`.")
-        st.stop()
+    embedding_variant = st.session_state.get("selected_embedding_variant", "")
+    user_id = global_user_id
+    top_k = int(st.session_state.get("phase2_top_k", 5))
+    min_similarity: float | None = st.session_state.get("phase2_min_similarity")
+    exclude_recent = bool(st.session_state.get("phase2_exclude_recent", True))
+    openai_model = str(st.session_state.get("phase2_openai_model", "gpt-5.4-mini"))
+    profile_source_mode = str(st.session_state.get("phase2_profile_source_mode", "auto"))
+    manual_profile_variant = str(st.session_state.get("phase2_manual_profile_variant", ""))
+    active_profile_user = str(st.session_state.get("active_profile_user", ""))
+    active_profile_mode = str(st.session_state.get("active_profile_mode", ""))
+    active_profile_variant = st.session_state.get("active_profile_variant")
+    active_auto_profile_variant = str(st.session_state.get("active_auto_profile_variant", ""))
+    profile_ready = bool(st.session_state.get("profile_ready", False))
+    load_profile_clicked = False
 
-    default_user = st.session_state.get("selected_user_id") or available_users[0]
-    default_index = available_users.index(default_user) if default_user in available_users else 0
-    with st.sidebar:
-        st.header("Controls")
-        selected_user = st.selectbox("Known user IDs", available_users, index=default_index)
-        custom_user = st.text_input("Or enter a user_id", value=selected_user)
-        user_id = custom_user.strip() or selected_user
-        st.session_state["selected_user_id"] = user_id
+    if show_phase2_controls or show_phase3_controls:
+        if not embedding_variants:
+            st.warning("No user embedding variants were found yet. Build one in sidebar Phase 1 to continue.")
+            st.stop()
 
-        st.markdown("### Profile build")
-        top_k = st.number_input("Retrieval top-k", min_value=5, max_value=100, value=20, step=5)
-        top_n = st.number_input("Summary top-n", min_value=5, max_value=100, value=20, step=5)
-        exclude_recent = st.checkbox("Exclude recently listened songs", value=True)
-        openai_model = st.text_input("OpenAI model", value="gpt-5.3-mini")
-        force_rebuild_profile = st.checkbox("Force rebuild profile artifacts", value=False)
+        if not embedding_variant or embedding_variant not in embedding_variants:
+            embedding_variant = embedding_variants[0]
+            st.session_state["selected_embedding_variant"] = embedding_variant
 
-        load_profile_clicked = st.button("Load profile")
-        refresh_run_clicked = st.button("Refresh latest run")
+        if show_phase2_controls:
+            default_variant_index = embedding_variants.index(embedding_variant) if embedding_variant in embedding_variants else 0
+            with st.sidebar:
+                embedding_variant = st.selectbox(
+                    "User embedding variant",
+                    embedding_variants,
+                    index=default_variant_index,
+                    help="Embedding variant used for retrieval/profile and subsequent generation.",
+                )
+                st.session_state["selected_embedding_variant"] = embedding_variant
 
-    profile_artifacts = load_profile_artifacts(user_id)
-    run_artifacts = load_latest_generation_run(user_id)
+        try:
+            available_users = get_available_users(embedding_variant)
+        except Exception as exc:
+            st.error(str(exc))
+            st.stop()
+
+        if not available_users:
+            st.error(f"No users are available in variant `{embedding_variant}`.")
+            st.stop()
+
+        if not user_id:
+            user_id = available_users[0]
+            st.session_state["selected_user_id"] = user_id
+        elif user_id not in available_users:
+            fallback_user = available_users[0]
+            st.warning(
+                f"Selected user `{user_id}` is not in embedding variant `{embedding_variant}`. "
+                f"Auto-switched to `{fallback_user}`."
+            )
+            user_id = fallback_user
+            st.session_state["selected_user_id"] = user_id
+
+        if show_phase2_controls:
+            existing_profile_variants = list_profile_variants_for_user(user_id)
+            with st.sidebar:
+                st.markdown("### Phase 2: Profile build")
+                top_k = st.number_input(
+                    "Retrieval top-k",
+                    min_value=5,
+                    max_value=100,
+                    value=int(top_k),
+                    step=1,
+                    help="Number of nearest songs used to build retrieval JSON, summary, and prompt.",
+                )
+                enable_min_similarity = st.checkbox(
+                    "Enable min similarity filter",
+                    value=min_similarity is not None,
+                    help="Turn on to keep only retrieval hits with cosine similarity >= threshold.",
+                )
+                if enable_min_similarity:
+                    min_similarity = float(
+                        st.number_input(
+                            "Min similarity threshold",
+                            min_value=-1.0,
+                            max_value=1.0,
+                            value=float(min_similarity) if min_similarity is not None else 0.2,
+                            step=0.05,
+                            help="Cosine similarity cutoff for retrieval results.",
+                        )
+                    )
+                else:
+                    min_similarity = None
+                exclude_recent = st.checkbox(
+                    "Exclude recently listened songs",
+                    value=bool(exclude_recent),
+                    help="Mask songs already in the user's listening history before retrieval ranking.",
+                )
+                openai_model = st.text_input(
+                    "OpenAI model",
+                    value=openai_model,
+                    help="Model used to generate profile paragraph and Suno prompt text.",
+                )
+                profile_source_mode = st.radio(
+                    "Profile source",
+                    options=["Build/reuse from current parameters", "Select existing profile"],
+                    index=0 if profile_source_mode != "manual" else 1,
+                    help="Use current parameters to build/reuse, or directly pick an existing profile artifact.",
+                )
+                profile_source_mode = "manual" if profile_source_mode == "Select existing profile" else "auto"
+                if profile_source_mode == "manual":
+                    profile_options = ["None"] + existing_profile_variants
+                    default_profile = (
+                        manual_profile_variant if manual_profile_variant in existing_profile_variants else "None"
+                    )
+                    manual_display = st.selectbox(
+                        "Existing profile variant",
+                        profile_options,
+                        index=profile_options.index(default_profile),
+                    )
+                    manual_profile_variant = "" if manual_display == "None" else manual_display
+                load_profile_clicked = st.button("Build or reuse profile")
+
+            st.session_state["phase2_top_k"] = int(top_k)
+            st.session_state["phase2_min_similarity"] = min_similarity
+            st.session_state["phase2_exclude_recent"] = bool(exclude_recent)
+            st.session_state["phase2_openai_model"] = openai_model
+            st.session_state["phase2_profile_source_mode"] = profile_source_mode
+            st.session_state["phase2_manual_profile_variant"] = manual_profile_variant
+
+            # Strict behavior: changing source/selection invalidates loaded profile.
+            if profile_source_mode == "manual":
+                if not manual_profile_variant:
+                    profile_ready = False
+                    active_profile_variant = None
+                    st.session_state["profile_ready"] = False
+                    st.session_state["active_profile_variant"] = None
+                    st.session_state["active_profile_mode"] = "manual"
+                else:
+                    # Manual + existing variant should load immediately without clicking.
+                    st.session_state["active_profile_variant"] = manual_profile_variant
+                    st.session_state["active_profile_mode"] = "manual"
+                    st.session_state["active_profile_user"] = user_id
+                    st.session_state["profile_ready"] = True
+            else:
+                current_auto_variant = build_profile_variant_tag(
+                    embedding_variant=embedding_variant,
+                    top_k=int(top_k),
+                    min_similarity=min_similarity,
+                    exclude_recent=exclude_recent,
+                    openai_model=openai_model,
+                )
+                if (
+                    active_profile_mode != "auto"
+                    or active_auto_profile_variant != current_auto_variant
+                    or active_profile_user != user_id
+                ):
+                    profile_ready = False
+                    st.session_state["profile_ready"] = False
+
+    profile_variant = ""
+    profile_artifacts = ProfileArtifacts(
+        user_id="",
+        raw_profile_path=Path(),
+        summary_path=Path(),
+        prompt_path=Path(),
+        validation_path=Path(),
+        raw_profile=None,
+        summary=None,
+        prompt=None,
+        validation=None,
+    )
+    run_artifacts = None
+    if show_phase2_controls or show_phase3_controls:
+        computed_profile_variant = build_profile_variant_tag(
+            embedding_variant=embedding_variant,
+            top_k=int(top_k),
+            min_similarity=min_similarity,
+            exclude_recent=exclude_recent,
+            openai_model=openai_model,
+        )
+        profile_variant = manual_profile_variant if profile_source_mode == "manual" else computed_profile_variant
+        if profile_ready and active_profile_user == user_id:
+            active_variant_to_load = st.session_state.get("active_profile_variant")
+            profile_artifacts = load_profile_artifacts(user_id, profile_variant=active_variant_to_load)
+            if st.session_state.get("active_profile_mode") == "manual":
+                st.caption(f"Using selected profile variant: `{active_variant_to_load or 'None'}`")
+            else:
+                st.caption(f"Profile variant key: `{active_variant_to_load}`")
+        else:
+            st.info("No profile loaded yet. Click `Build or reuse profile` in Phase 2.")
 
     if load_profile_clicked:
-        with st.spinner("Building or loading profile artifacts..."):
-            profile_artifacts = build_or_load_profile(
-                user_id=user_id,
-                top_k=int(top_k),
-                top_n=int(top_n),
-                exclude_recent=exclude_recent,
-                openai_model=openai_model,
-                force_rebuild=force_rebuild_profile,
-            )
-        st.success("Profile artifacts are ready.")
-
-    if refresh_run_clicked:
-        run_artifacts = load_latest_generation_run(user_id)
-        if run_artifacts is None:
-            st.warning("No generation run found for this user yet.")
+        if profile_source_mode == "manual":
+            with st.spinner("Loading selected profile artifacts..."):
+                if manual_profile_variant:
+                    profile_artifacts = load_profile_artifacts(user_id, profile_variant=manual_profile_variant)
+                else:
+                    profile_artifacts = ProfileArtifacts(
+                        user_id=user_id,
+                        raw_profile_path=Path(),
+                        summary_path=Path(),
+                        prompt_path=Path(),
+                        validation_path=Path(),
+                        raw_profile=None,
+                        summary=None,
+                        prompt=None,
+                        validation=None,
+                    )
         else:
-            st.success(f"Loaded latest run: {run_artifacts.run_id}")
+            with st.spinner("Building or reusing profile artifacts..."):
+                profile_artifacts = build_or_load_profile(
+                    user_id=user_id,
+                    embedding_variant=embedding_variant,
+                    top_k=int(top_k),
+                    min_similarity=min_similarity,
+                    exclude_recent=exclude_recent,
+                    openai_model=openai_model,
+                )
+        if profile_source_mode == "manual":
+            if manual_profile_variant:
+                st.session_state["active_profile_variant"] = manual_profile_variant
+                st.session_state["active_profile_mode"] = "manual"
+                st.session_state["active_profile_user"] = user_id
+                st.session_state["profile_ready"] = True
+            else:
+                st.session_state["active_profile_variant"] = None
+                st.session_state["active_profile_mode"] = "manual"
+                st.session_state["active_profile_user"] = user_id
+                st.session_state["profile_ready"] = False
+        else:
+            st.session_state["active_profile_variant"] = profile_variant
+            st.session_state["active_profile_mode"] = "auto"
+            st.session_state["active_profile_user"] = user_id
+            st.session_state["active_auto_profile_variant"] = profile_variant
+            st.session_state["profile_ready"] = True
 
-    profile_col, generation_col = st.columns([1, 1])
-    with profile_col:
+        if profile_artifacts.prompt and st.session_state.get("profile_ready"):
+            st.success("Profile artifacts ready (existing artifacts are reused when parameters match).")
+        elif profile_source_mode == "manual" and not manual_profile_variant:
+            st.info("No profile selected (`None`).")
+        else:
+            st.warning("Profile prompt not ready yet.")
+
+    if view_section == "Intro":
+        st.markdown("## Intro")
+        st.caption(
+            f"Select user to generate AI songs based on listening history. Current user: `{user_id or '—'}`."
+        )
+        _render_procedure_brief()
+
+    if view_section == "Phase 1 - User Embedding":
+        st.markdown("## Phase 1 — User Embedding + Profile Setup")
+        p1 = st.columns(3)
+        p1[0].metric("Embedding variant", phase1_embedding_variant or "—")
+        p1[1].metric("Recent-k", int(build_recent_k))
+        p1[2].metric("Medoid threshold", float(build_medoid_threshold))
+        st.caption("In Phase 1 controls: choose an existing embedding variant, or build a new one.")
+        with st.spinner("Building Phase 1 PCA..."):
+            try:
+                if not phase1_user_id:
+                    raise ValueError("Please select a user in Intro first.")
+                if not phase1_embedding_variant:
+                    raise ValueError("Select an embedding variant in Phase 1 controls, or build one first.")
+                plot_df, phase1_rows = _compute_phase1_pca_data(
+                    user_id=phase1_user_id,
+                    embedding_variant=phase1_embedding_variant,
+                    recent_k=int(build_recent_k),
+                    medoid_threshold=float(build_medoid_threshold),
+                )
+                try:
+                    px = importlib.import_module("plotly.express")
+
+                    fig = px.scatter(
+                        plot_df,
+                        x="x",
+                        y="y",
+                        color="group",
+                        symbol="group",
+                        hover_name="label",
+                        hover_data={
+                            "song_id": True,
+                            "artist": True,
+                            "song": True,
+                            "album": True,
+                            "recency_rank": True,
+                            "repeat_count": True,
+                            "cos_to_medoid": True,
+                            "x": False,
+                            "y": False,
+                        },
+                        category_orders={"group": ["medoid", "kept", "filtered", "user"]},
+                        color_discrete_map={
+                            "medoid": "#ff8f00",
+                            "kept": "#2e7d32",
+                            "filtered": "#c62828",
+                            "user": "#1565c0",
+                        },
+                        title="Phase 1 PCA: recent songs (kept vs filtered) + user embedding",
+                    )
+                    fig.update_layout(
+                        legend_title_text="Group",
+                        legend=dict(
+                            x=1.02,
+                            y=1.0,
+                            xanchor="left",
+                            yanchor="top",
+                        ),
+                        margin=dict(r=160),
+                    )
+                    fig.update_traces(marker=dict(size=9, opacity=0.9))
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.caption("Tip: click legend items on the right to hide/show groups.")
+                except Exception:
+                    fig_mpl, ax = plt.subplots(figsize=(7, 5))
+                    for grp, color, marker in [
+                        ("medoid", "#ff8f00", "D"),
+                        ("kept", "#2e7d32", "o"),
+                        ("filtered", "#c62828", "x"),
+                        ("user", "#1565c0", "*"),
+                    ]:
+                        part = plot_df[plot_df["group"] == grp]
+                        if not part.empty:
+                            ax.scatter(part["x"], part["y"], c=color, marker=marker, s=45, alpha=0.9, label=grp)
+                    ax.set_title("Phase 1 PCA: recent songs (kept vs filtered) + user embedding")
+                    ax.set_xlabel("PC1")
+                    ax.set_ylabel("PC2")
+                    ax.legend(loc="upper right")
+                    ax.grid(alpha=0.25)
+                    st.pyplot(fig_mpl, clear_figure=True)
+                    st.caption("Install `plotly` for interactive legend toggle.")
+                st.caption("`recency_rank`: 0 means most recent event; larger means older in the recent-k window.")
+                st.caption("`repeat_count`: how many times the same song appears in the selected recent-k events.")
+                st.dataframe(phase1_rows, width="stretch")
+            except Exception as exc:
+                st.info(f"Phase 1 PCA unavailable: {exc}")
+
+    if view_section == "Phase 2 - Retrieval + Prompt":
+        st.markdown("## Phase 2 — Retrieval + Prompt")
+        st.caption(f"Current user: `{user_id}` | Embedding variant: `{embedding_variant}`")
+        st.subheader("Retrieval snapshot")
+        _render_retrieval_snapshot(profile_artifacts)
+        st.divider()
         _render_profile_section(profile_artifacts)
-    with generation_col:
-        st.subheader("Generation controls")
-        with st.form("generation_form"):
-            generation_model = st.text_input("Generation model", value="chirp-v4-5")
-            num_calls = st.number_input("Number of API calls", min_value=1, max_value=10, value=5, step=1)
-            max_concurrency = st.number_input("Max concurrency", min_value=1, max_value=5, value=2, step=1)
-            negative_prompt = st.text_input("Negative prompt", value="")
-            lyrics = st.text_area("Lyrics or timestamp cues", value="", height=120)
-            tempo_hint_bpm = st.number_input("Tempo hint (BPM)", min_value=0, max_value=300, value=0, step=1)
-            duration_hint_seconds = st.number_input("Duration hint (seconds)", min_value=0, max_value=600, value=0, step=1)
-            rerank_top_k = st.number_input("Rerank keep top-k", min_value=1, max_value=10, value=2, step=1)
-            diversity_threshold_text = st.text_input("Diversity threshold (optional)", value="")
-            rerank_encoder = st.selectbox("Rerank encoder", ["auto", "finetuned", "zeroshot"], index=0)
-            generate_clicked = st.form_submit_button("Generate songs")
+        llm_prompt_text = _extract_llm_generation_prompt(profile_artifacts)
+        if llm_prompt_text:
+            st.divider()
+            st.subheader("LLM generation prompt")
+            st.text_area("Prompt text", value=llm_prompt_text, height=120, disabled=True)
+
+    if view_section == "Phase 3 - Generate + Rerank + Evaluate":
+        st.markdown("## Phase 3 — Generate + Rerank + Evaluate")
+        st.caption(f"Current user: `{user_id}` | Embedding variant: `{embedding_variant}`")
+        if not profile_artifacts.prompt:
+            st.info("Please run Phase 2 first: click `Build or reuse profile` to prepare the prompt.")
+        st.subheader("Generation results")
+        with st.sidebar:
+            st.markdown("### Phase 3: Generate")
+            phase3_profile_input_mode = st.radio(
+                "Profile input",
+                options=["Use profile from Phase 2", "Build/reuse now before generate"],
+                index=0,
+                help="Choose whether to use currently loaded Phase 2 profile, or rebuild/reuse profile right before generation.",
+            )
+            generation_model = st.text_input(
+                "Generation model",
+                value="chirp-v4-5",
+                help="Provider-side model name for Suno generation.",
+            )
+            num_calls = st.number_input(
+                "Number of API calls",
+                min_value=1,
+                max_value=10,
+                value=5,
+                step=1,
+                help="How many generation calls to run for the same prompt.",
+            )
+            max_concurrency = st.number_input(
+                "Max concurrency",
+                min_value=1,
+                max_value=5,
+                value=2,
+                step=1,
+                help="Maximum parallel generation calls.",
+            )
+            negative_prompt = st.text_input(
+                "Negative prompt",
+                value="",
+                help="Optional style/content guidance for what to avoid.",
+            )
+            lyrics = st.text_area(
+                "Lyrics or timestamp cues",
+                value="",
+                height=120,
+                help="Optional lyrics or timing cues sent to generation.",
+            )
+            tempo_hint_bpm = st.number_input(
+                "Tempo hint (BPM)",
+                min_value=0,
+                max_value=300,
+                value=0,
+                step=1,
+                help="Optional tempo hint for generation request.",
+            )
+            duration_hint_seconds = st.number_input(
+                "Duration hint (seconds)",
+                min_value=0,
+                max_value=600,
+                value=0,
+                step=1,
+                help="Optional duration hint for generation request.",
+            )
+            rerank_top_k = st.number_input(
+                "Rerank keep top-k",
+                min_value=1,
+                max_value=10,
+                value=2,
+                step=1,
+                help="How many generated candidates to keep after CLAP reranking.",
+            )
+            diversity_threshold_text = st.text_input(
+                "Diversity threshold (optional)",
+                value="",
+                help="Optional cosine threshold to avoid near-duplicate selected tracks.",
+            )
+            rerank_encoder = st.selectbox(
+                "Rerank encoder",
+                ["auto", "finetuned", "zeroshot"],
+                index=0,
+                help="CLAP encoder used for reranking generated audio.",
+            )
+            generate_clicked = st.button("Generate songs")
 
         if generate_clicked:
-            if not profile_artifacts.prompt:
-                with st.spinner("No prompt artifact found. Building profile first..."):
+            if phase3_profile_input_mode == "Build/reuse now before generate":
+                with st.spinner("Building/reusing profile artifacts before generation..."):
                     profile_artifacts = build_or_load_profile(
                         user_id=user_id,
+                        embedding_variant=embedding_variant,
                         top_k=int(top_k),
-                        top_n=int(top_n),
+                        min_similarity=min_similarity,
                         exclude_recent=exclude_recent,
                         openai_model=openai_model,
-                        force_rebuild=False,
+                    )
+            elif not profile_artifacts.prompt:
+                with st.spinner("No prompt artifact found. Building/reusing profile first..."):
+                    profile_artifacts = build_or_load_profile(
+                        user_id=user_id,
+                        embedding_variant=embedding_variant,
+                        top_k=int(top_k),
+                        min_similarity=min_similarity,
+                        exclude_recent=exclude_recent,
+                        openai_model=openai_model,
                     )
 
             try:
@@ -410,6 +1196,7 @@ def main() -> None:
             with st.spinner("Running generation, rerank, and eval..."):
                 generation_result = run_generation_for_user(
                     user_id=user_id,
+                    embedding_variant=embedding_variant,
                     prompt_output=profile_artifacts.prompt,
                     generation_model=generation_model,
                     num_calls=int(num_calls),
@@ -423,10 +1210,14 @@ def main() -> None:
                     rerank_encoder=rerank_encoder,
                 )
             run_artifacts = generation_result["run_artifacts"]
+            st.session_state["latest_generated_run"] = run_artifacts
             st.success(f"Generation, rerank, and eval finished. Latest run: {run_artifacts.run_id}")
 
-    _render_generation_section(run_artifacts)
-    _render_visualization_section(user_id, run_artifacts)
+        session_run = st.session_state.get("latest_generated_run")
+        if run_artifacts is None and isinstance(session_run, GenerationRunArtifacts):
+            run_artifacts = session_run
+        _render_generation_section(run_artifacts)
+        _render_visualization_section(user_id, run_artifacts)
 
 
 if __name__ == "__main__":

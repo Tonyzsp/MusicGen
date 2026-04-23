@@ -26,9 +26,9 @@ Processing overview
    retrieval.
 
 Outputs
-- `user_embeddings.npy`: row-aligned matrix of user embedding vectors.
-- `user_ids.npy`: user IDs corresponding to `user_embeddings.npy`.
-- `user_embedding_stats.csv`: per-user diagnostics for recent events and songs
+- `user_embeddings__<variant>.npy`: row-aligned matrix of user embedding vectors.
+- `user_ids__<variant>.npy`: user IDs corresponding to `user_embeddings__<variant>.npy`.
+- `user_embedding_stats__<variant>.csv`: per-user diagnostics for recent events and songs
   kept after coherence filtering.
 
 Operational notes
@@ -152,6 +152,18 @@ def ensure_song_ids(song_ids_path: str, id_genres_path: str, expected_n: int) ->
     return song_ids
 
 
+def build_user_embedding_variant_tag(
+    *,
+    recent_k: int,
+    decay_lambda: float,
+    medoid_threshold: float,
+    min_keep: int,
+) -> str:
+    decay = f"{float(decay_lambda):.3f}".rstrip("0").rstrip(".")
+    medoid = f"{float(medoid_threshold):.3f}".rstrip("0").rstrip(".")
+    return f"rk{int(recent_k)}_dl{decay}_mt{medoid}_mk{int(min_keep)}"
+
+
 def build_user_embeddings(
     listening_df: pd.DataFrame,
     song_ids: np.ndarray,
@@ -261,12 +273,13 @@ def main() -> None:
     # Recent-K tradeoff:
     # - Smaller K (e.g., 5-10): more responsive to short-term taste shifts,
     #   but more sensitive to noise/outlier listens.
-    # - Larger K (e.g., 50): more stable profile, but slower to adapt.
-    # In practice, K=20 is often a good balance for short-term recommendation.
-    parser.add_argument("--recent-k", type=int, default=50)
+    # - Larger K (e.g., 20: more stable profile, but slower to adapt.
+    # In practice, K=10 is a stronger short-term preference setting.
+    parser.add_argument("--recent-k", type=int, default=10)
     parser.add_argument("--decay-lambda", type=float, default=0.08)
     parser.add_argument("--medoid-threshold", type=float, default=0.2)
     parser.add_argument("--min-keep", type=int, default=5)
+    parser.add_argument("--force", action="store_true", help="Rebuild even if this variant already exists.")
     args = parser.parse_args()
 
     os.makedirs(Config.EMBEDDINGS_DIR, exist_ok=True)
@@ -292,9 +305,22 @@ def main() -> None:
         min_keep=args.min_keep,
     )
 
-    user_emb_path = Path(Config.EMBEDDINGS_DIR) / "user_embeddings.npy"
-    user_ids_path = Path(Config.EMBEDDINGS_DIR) / "user_ids.npy"
-    stats_path = Path(Config.EMBEDDINGS_DIR) / "user_embedding_stats.csv"
+    variant = build_user_embedding_variant_tag(
+        recent_k=args.recent_k,
+        decay_lambda=args.decay_lambda,
+        medoid_threshold=args.medoid_threshold,
+        min_keep=args.min_keep,
+    )
+    user_emb_path = Path(Config.EMBEDDINGS_DIR) / f"user_embeddings__{variant}.npy"
+    user_ids_path = Path(Config.EMBEDDINGS_DIR) / f"user_ids__{variant}.npy"
+    stats_path = Path(Config.EMBEDDINGS_DIR) / f"user_embedding_stats__{variant}.csv"
+
+    if not args.force and user_emb_path.exists() and user_ids_path.exists() and stats_path.exists():
+        print(f"Variant already exists, skipping rebuild: {variant}")
+        print(f"User embeddings: {user_emb_path}")
+        print(f"User ids: {user_ids_path}")
+        print(f"Stats: {stats_path}")
+        return
 
     np.save(user_emb_path, user_embs)
     np.save(user_ids_path, user_ids)

@@ -18,7 +18,7 @@ This stage turns retrieval output into:
 The profile-prompt stage expects a retrieval JSON produced by:
 
 ```bash
-python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20 -o outputs/profiles/<USER_ID>.json
+python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20 --user-emb-path outputs/embeddings/music4all/user_embeddings__<VARIANT>.npy --user-ids-path outputs/embeddings/music4all/user_ids__<VARIANT>.npy -o outputs/profiles/<USER_ID>.json
 ```
 
 That JSON contains the user ID, retrieved songs, similarity scores, and joined metadata such as genres, tags, artist/song names, and audio features.
@@ -38,8 +38,7 @@ You can place this in `.env` locally if you use `python-dotenv`.
 ## Condensed summary (`build_profile_features.py`)
 
 ```bash
-python src/profile_prompt/build_profile_features.py --input outputs/profiles/<USER_ID>.json --output outputs/profiles/<USER_ID>_summary.json
-python src/profile_prompt/build_profile_features.py --input outputs/profiles/<USER_ID>.json --output outputs/profiles/<USER_ID>_summary.json --top-n 10
+python src/profile_prompt/build_profile_features.py --input outputs/profiles/<USER_ID>.json --output outputs/profiles/<USER_ID>_topk_summary.json
 ```
 
 What it does:
@@ -54,8 +53,6 @@ What it does:
 |-----------|---------|
 | `--input` | **Required.** Path to the retrieval JSON exported from `src/embed/export_user_profile_json.py`. |
 | `--output` | **Required.** Path to save the condensed summary JSON. |
-| `--top-n` | How many retrieved songs to summarize (default `20`). Smaller values focus on the nearest songs only. |
-
 Output JSON includes fields such as `top_genres`, `top_tags`, `representative_artists`, `representative_tracks`, `audio_profile`, `mood_summary`, and `rule_based_profile_paragraph`.
 
 ---
@@ -63,8 +60,8 @@ Output JSON includes fields such as `top_genres`, `top_tags`, `representative_ar
 ## LLM profile and prompt (`generate_user_profile_and_prompt.py`)
 
 ```bash
-python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_summary.json --output outputs/profiles/<USER_ID>_prompt.json
-python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_summary.json --output outputs/profiles/<USER_ID>_prompt.json --model gpt-4.1-mini
+python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_topk_summary.json --output outputs/profiles/<USER_ID>_prompt.json
+python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_topk_summary.json --output outputs/profiles/<USER_ID>_prompt.json --model gpt-4.1-mini
 ```
 
 What it does:
@@ -129,9 +126,9 @@ This script is mainly for quality checking and debugging, not for the main gener
 ## Suggested order
 
 ```bash
-python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20 --exclude-recent -o outputs/profiles/<USER_ID>.json
-python src/profile_prompt/build_profile_features.py --input outputs/profiles/<USER_ID>.json --output outputs/profiles/<USER_ID>_summary.json
-python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_summary.json --output outputs/profiles/<USER_ID>_prompt.json
+python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20 --min-similarity 0.0 --exclude-recent --user-emb-path outputs/embeddings/music4all/user_embeddings__<VARIANT>.npy --user-ids-path outputs/embeddings/music4all/user_ids__<VARIANT>.npy -o outputs/profiles/<USER_ID>.json
+python src/profile_prompt/build_profile_features.py --input outputs/profiles/<USER_ID>.json --output outputs/profiles/<USER_ID>_topk_summary.json
+python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_topk_summary.json --output outputs/profiles/<USER_ID>_prompt.json
 ```
 
 Optional validation step:

@@ -94,11 +94,11 @@ def _build_rule_based_profile(summary: Dict[str, Any]) -> str:
     )
 
 
-def build_profile_features(profile_json: Dict[str, Any], top_n: int = 20) -> Dict[str, Any]:
+def build_profile_features(profile_json: Dict[str, Any]) -> Dict[str, Any]:
     """
     Convert retrieval JSON into a compact, LLM-friendly summary.
     """
-    songs = profile_json.get("songs", [])[:top_n]
+    songs = profile_json.get("songs", [])
 
     genre_counter: Counter = Counter()
     tag_counter: Counter = Counter()
@@ -152,6 +152,7 @@ def build_profile_features(profile_json: Dict[str, Any], top_n: int = 20) -> Dic
     summary = {
         "user_id": profile_json.get("user_id"),
         "source_top_k": profile_json.get("top_k"),
+        "source_song_count": len(songs),
         "top_genres": _top_items(genre_counter, 8),
         "top_tags": _top_items(tag_counter, 10),
         "representative_artists": _top_items(artist_counter, 6),
@@ -201,17 +202,10 @@ if __name__ == "__main__":
         required=True,
         help="Path to save condensed feature summary JSON."
     )
-    parser.add_argument(
-        "--top-n",
-        type=int,
-        default=20,
-        help="How many retrieved songs to summarize."
-    )
-
     args = parser.parse_args()
 
     raw_profile = load_profile_json(args.input)
-    summary = build_profile_features(raw_profile, top_n=args.top_n)
+    summary = build_profile_features(raw_profile)
     save_summary(summary, args.output)
 
     print("\nBuilt condensed profile summary.\n")

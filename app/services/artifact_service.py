@@ -91,18 +91,29 @@ class EvalArtifacts:
     report_markdown: str | None
 
 
-def get_profile_paths(user_id: str) -> dict[str, Path]:
+def _profile_suffix(profile_variant: str | None) -> str:
+    if not profile_variant:
+        return ""
+    return f"__{sanitize_segment(profile_variant)}"
+
+
+def get_profile_paths(user_id: str, *, profile_variant: str | None = None) -> dict[str, Path]:
     safe_user_id = sanitize_segment(user_id)
+    suffix = _profile_suffix(profile_variant)
     return {
-        "raw_profile": PROFILES_ROOT / f"{safe_user_id}.json",
-        "summary": PROFILES_ROOT / f"{safe_user_id}_summary.json",
-        "prompt": PROFILES_ROOT / f"{safe_user_id}_prompt.json",
-        "validation": PROFILES_ROOT / f"{safe_user_id}_validation.json",
+        "raw_profile": PROFILES_ROOT / f"{safe_user_id}{suffix}.json",
+        "summary": PROFILES_ROOT / f"{safe_user_id}{suffix}_topk_summary.json",
+        "legacy_summary": PROFILES_ROOT / f"{safe_user_id}_summary.json",
+        "prompt": PROFILES_ROOT / f"{safe_user_id}{suffix}_prompt.json",
+        "validation": PROFILES_ROOT / f"{safe_user_id}{suffix}_validation.json",
     }
 
 
-def load_profile_artifacts(user_id: str) -> ProfileArtifacts:
-    paths = get_profile_paths(user_id)
+def load_profile_artifacts(user_id: str, *, profile_variant: str | None = None) -> ProfileArtifacts:
+    paths = get_profile_paths(user_id, profile_variant=profile_variant)
+    summary_payload = _load_json_if_exists(paths["summary"])
+    if summary_payload is None and not profile_variant:
+        summary_payload = _load_json_if_exists(paths["legacy_summary"])
     return ProfileArtifacts(
         user_id=user_id,
         raw_profile_path=paths["raw_profile"],
@@ -110,7 +121,7 @@ def load_profile_artifacts(user_id: str) -> ProfileArtifacts:
         prompt_path=paths["prompt"],
         validation_path=paths["validation"],
         raw_profile=_load_json_if_exists(paths["raw_profile"]),
-        summary=_load_json_if_exists(paths["summary"]),
+        summary=summary_payload,
         prompt=_load_json_if_exists(paths["prompt"]),
         validation=_load_json_if_exists(paths["validation"]),
     )

@@ -7,7 +7,7 @@ The current generate stage reuses an existing prompt JSON from the profile-promp
 Recommended upstream command:
 
 ```bash
-python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_summary.json --output outputs/profiles/<USER_ID>_prompt.json
+python src/profile_prompt/generate_user_profile_and_prompt.py --input outputs/profiles/<USER_ID>_topk_summary.json --output outputs/profiles/<USER_ID>_prompt.json
 ```
 
 This file should contain:

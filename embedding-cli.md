@@ -26,8 +26,9 @@ These files are **not** in the repository (ignored by `.gitignore`); download or
 |------|---------------------|
 | `music4all_embeddings.npy` | Produced by `src/embed/embed_music4all.py` or `embed_music4all_zeroshot.py`, or copied in from elsewhere; shape `(N, 512)`. |
 | `music4all_ids.npy` | Optional at first. If missing, `build_user_embeddings.py` creates it from `id_genres.csv` (row order must match `music4all_embeddings.npy`). |
-| `user_embeddings.npy` | Produced by `src/embed/build_user_embeddings.py`. |
-| `user_ids.npy` | Produced by `src/embed/build_user_embeddings.py` (same row order as `user_embeddings.npy`). |
+| `user_embeddings__<variant>.npy` | Produced by `src/embed/build_user_embeddings.py` with parameter-signature naming. |
+| `user_ids__<variant>.npy` | Produced by `src/embed/build_user_embeddings.py` (row order aligned with matching `user_embeddings__<variant>.npy`). |
+| `user_embedding_stats__<variant>.csv` | Diagnostics for the same variant run. |
 
 ### Weights: `weights/clap/` (only if you encode audio yourself)
 
@@ -39,29 +40,39 @@ These files are **not** in the repository (ignored by `.gitignore`); download or
 
 ```bash
 python src/embed/build_user_embeddings.py
-python src/embed/build_user_embeddings.py --recent-k 20 --decay-lambda 0.08 --medoid-threshold 0.2 --min-keep 5
+python src/embed/build_user_embeddings.py --recent-k 10 --decay-lambda 0.08 --medoid-threshold 0.2 --min-keep 5
+python src/embed/build_user_embeddings.py --recent-k 10 --decay-lambda 0.08 --medoid-threshold 0.2 --min-keep 5 --force
 ```
 
 | Parameter | Default | Meaning |
 |-----------|---------|---------|
-| `--recent-k` | `50` | Max recent listening events per user before aggregation (smaller → more short-term). |
+| `--recent-k` | `10` | Max recent listening events per user before aggregation (smaller → more short-term). |
 | `--decay-lambda` | `0.08` | Weight for older events: \( \exp(-\lambda \times \text{rank}) \); larger → stronger recency. |
 | `--medoid-threshold` | `0.2` | Cosine similarity to the medoid track; songs below this are dropped as outliers. |
 | `--min-keep` | `5` | After filtering, keep at least this many songs (fallback if too many are removed). |
+| `--force` | `false` | Rebuild even if the same parameter variant files already exist. |
+
+Naming rule:
+- variant = `rk{recent_k}_dl{decay_lambda}_mt{medoid_threshold}_mk{min_keep}`
+- outputs: `user_embeddings__<variant>.npy`, `user_ids__<variant>.npy`, `user_embedding_stats__<variant>.csv`
+- if these three already exist and `--force` is not set, the script skips recomputation.
 
 ---
 
 ## Top-K recommendations (`recommend_topk.py`)
 
 ```bash
-python src/embed/recommend_topk.py --user-id <USER_ID> --top-k 20
-python src/embed/recommend_topk.py --user-id <USER_ID> --top-k 10 --exclude-recent --with-info --with-metadata
+python src/embed/recommend_topk.py --user-id <USER_ID> --top-k 5 --user-emb-path outputs/embeddings/music4all/user_embeddings__<VARIANT>.npy --user-ids-path outputs/embeddings/music4all/user_ids__<VARIANT>.npy
+python src/embed/recommend_topk.py --user-id <USER_ID> --top-k 5 --min-similarity 0.0 --exclude-recent --with-info --with-metadata --user-emb-path outputs/embeddings/music4all/user_embeddings__<VARIANT>.npy --user-ids-path outputs/embeddings/music4all/user_ids__<VARIANT>.npy
 ```
 
 | Parameter | Meaning |
 |-----------|---------|
-| `--user-id` | **Required.** User id as stored in `user_ids.npy`. |
-| `--top-k` | How many nearest songs to return (default `20`). |
+| `--user-id` | **Required.** User id as stored in the provided `user_ids__<variant>.npy`. |
+| `--top-k` | How many nearest songs to return (default `5`). |
+| `--min-similarity` | Optional cosine threshold; keep only songs with similarity >= this value. |
+| `--user-emb-path` | **Required.** Path to `user_embeddings__<variant>.npy`. |
+| `--user-ids-path` | **Required.** Path to `user_ids__<variant>.npy`. |
 | `--exclude-recent` | Mask out every song that appears in `listening_history.csv` for this user so recommendations are not already heard. |
 | `--with-info` | Join `id_information.csv`: `artist`, `song`, `album_name`. |
 | `--with-metadata` | Join `id_metadata.csv`: Spotify id, audio features (`tempo`, `energy`, etc.). |
@@ -71,14 +82,17 @@ python src/embed/recommend_topk.py --user-id <USER_ID> --top-k 10 --exclude-rece
 ## Profile JSON (`export_user_profile_json.py`)
 
 ```bash
-python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20
-python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20 --exclude-recent -o outputs/profiles/<USER_ID>.json
+python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20 --user-emb-path outputs/embeddings/music4all/user_embeddings__<VARIANT>.npy --user-ids-path outputs/embeddings/music4all/user_ids__<VARIANT>.npy
+python src/embed/export_user_profile_json.py --user-id <USER_ID> --top-k 20 --min-similarity 0.0 --exclude-recent --user-emb-path outputs/embeddings/music4all/user_embeddings__<VARIANT>.npy --user-ids-path outputs/embeddings/music4all/user_ids__<VARIANT>.npy -o outputs/profiles/<USER_ID>.json
 ```
 
 | Parameter | Meaning |
 |-----------|---------|
-| `--user-id` | **Required.** User id in `user_ids.npy`. |
+| `--user-id` | **Required.** User id in the provided `user_ids__<variant>.npy`. |
 | `--top-k` | Number of nearest neighbors to include in JSON (default `20`). Same idea as `--top-k` in `recommend_topk.py`. |
+| `--min-similarity` | Optional cosine threshold; keep only songs with similarity >= this value. |
+| `--user-emb-path` | **Required.** Path to `user_embeddings__<variant>.npy`. |
+| `--user-ids-path` | **Required.** Path to `user_ids__<variant>.npy`. |
 | `--top-m` | Deprecated alias for `--top-k`. |
 | `--exclude-recent` | Same as above: exclude songs the user already listened to. |
 | `-o` / `--output` | Write JSON to this file; if omitted, print JSON to stdout only. |
