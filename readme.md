@@ -2,8 +2,7 @@
 
 ## Project Introduction
 
-Gen4Rec is a generative music recommendation project.  
-Instead of only retrieving existing tracks, it builds user embeddings from listening history, generates new music candidates, reranks them in embedding space, and evaluates personalization/diversity/risk metrics.
+Gen4Rec is an end-to-end generative music recommendation system. Instead of only retrieving existing tracks, it learns user preference embeddings from listening history, creates profile-driven music prompts, generates new candidate songs, reranks candidates in CLAP embedding space, and evaluates the final outputs with personalization, diversity, and imitation-risk metrics.
 
 Main stages:
 
@@ -67,7 +66,21 @@ Note: dataset CSV/audio files and model checkpoints are intentionally not stored
 
 ## CLI (Phase-by-Phase)
 
-### 1) Activate Environment
+### 1) Set Up Environment
+
+Create the environment (first-time setup):
+
+```bash
+conda env create -f environment.yaml
+```
+
+If the environment already exists, update it:
+
+```bash
+conda env update -f environment.yaml --prune
+```
+
+Then activate:
 
 ```bash
 conda activate gen4rec
@@ -167,6 +180,7 @@ python src/eval/run_eval.py \
 ## Frontend Demo
 
 ```bash
+conda env create -f environment.yaml
 conda activate gen4rec
 streamlit run app/streamlit_app.py
 ```
