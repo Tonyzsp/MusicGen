@@ -1,107 +1,110 @@
-# Gen4Rec Implementation Notes (Code-Aligned)
+# Gen4Rec Implementation
 
-This document summarizes the current implementation in `src/` and `app/services/`, with emphasis on finetuning, naming, and reuse behavior.
-
----
-
-## 1. System Architecture
-
-Pipeline stages:
-
-1. CLAP finetuning (optional)
-2. User embedding construction
-3. Profile and prompt generation
-4. Generation and rerank
-5. Evaluation
-
-Core entry points:
-
-- `src/embed/finetune_clap.py`
-- `src/embed/build_user_embeddings.py`
-- `src/profile_prompt/run_profile_pipeline.py`
-- `src/generate/run_generate.py`
-- `src/generate/rerank.py`
-- `src/eval/run_eval.py`
+This document explains the current implementation in `src/` and how artifacts are produced across stages.
 
 ---
 
-## 2. Finetuning Implementation (`src/embed/finetune_clap.py`)
+## 1) Pipeline Overview
 
-### 2.1 Data and Input Construction
+1. CLAP finetuning (optional): `src/embed/finetune_clap.py`
+2. User embeddings: `src/embed/build_user_embeddings.py`
+3. Profile and prompt: `src/profile_prompt/run_profile_pipeline.py`
+4. Generation: `src/generate/run_generate.py`
+5. Rerank: `src/generate/rerank.py`
+6. Eval: `src/eval/run_eval.py`
 
-- Uses `music4all/id_genres.csv` and `music4all/id_tags.csv`.
-- Keeps only rows with matching local audio file at `music4all/audios/<id>.mp3`.
-- Builds one text prompt per song:
-  - `genres: <...>, tags: <...>`
+Default models used in the pipeline:
 
-### 2.2 Audio Processing
+- Prompt model: `gpt-5.4-mini`
+- Generation model: `chirp-v4-5`
 
-- Target sample rate: `48k` (`SAMPLE_RATE = 48000`).
-- Chunk setup:
-  - `NUM_CHUNKS = 3`
-  - `CHUNK_DURATION = 10s`
-  - `CHUNK_SAMPLES = 480000`
-- If a track is shorter than one chunk, it is zero-padded and repeated for 3 chunks.
-- If longer, 3 evenly spaced chunk start points are used.
+---
 
-### 2.3 Model and Pooling
+## 2) Finetuning (CLAP)
 
-- Base model: LAION CLAP (`HTSAT-base`) loaded from local checkpoint.
-- Chunk features are pooled with a learned attention head:
-  - `ContextAttention`
-  - input `[B, C, D]`, output `[B, D]`
-- This replaces simple mean pooling and lets training learn which chunk matters more.
+Implementation: `src/embed/finetune_clap.py`
 
-### 2.4 Loss Design
+### Data
 
-Implemented loss: `SemanticSoftClipLossA2TTextOnly`.
+- Metadata sources: `id_genres.csv`, `id_tags.csv`
+- Audio source: `music4all/audios/<song_id>.mp3`
+- Text per song: `genres: ..., tags: ...`
 
-- Audio->Text uses soft targets built from text-text similarity:
-  - `y = (1-lambda)*I + lambda*softmax(tau * text_sim)`
-  - default `lambda = 0.5`, `tau = 10.0`
-- Text->Audio uses standard one-hot CLIP/CLAP targets.
-- This asymmetric setup reduces over-penalization when tag/genre semantics overlap.
+### Audio preprocessing
 
-### 2.5 Training Setup
+- Sample rate: `48k`
+- Chunks: `NUM_CHUNKS=3`, `CHUNK_DURATION=10s`
+- Short tracks: zero-pad then replicate chunks
+- Long tracks: evenly spaced chunk starts
 
-- Split: train/val/test = `0.8 / 0.1 / 0.1` (seeded split).
+### Model and loss
+
+- Base encoder: LAION CLAP (`HTSAT-base`)
+- Chunk pooling: `ContextAttention` (learned weighted pooling over chunks)
+- Loss: `SemanticSoftClipLossA2TTextOnly`
+  - Audio->Text soft target:
+    - `y = (1 - lambda) * I + lambda * softmax(tau * text_sim)`
+    - defaults: `lambda = 0.5`, `tau = 10.0`
+  - Text->Audio: standard one-hot target
+
+### Training defaults
+
+- Split: `0.8/0.1/0.1`
 - Batch size: `32`
-- Learning rate: `1e-5`
+- LR: `1e-5`
 - Epochs: `16`
 - Optimizer: `AdamW(weight_decay=0.01)`
-- Saves per-epoch checkpoint and best checkpoint:
-  - `weights/clap/clap_finetuned_epoch_<N>.pt`
-  - `weights/clap/clap_finetuned_best.pt`
+- Best checkpoint: `weights/clap/clap_finetuned_best.pt`
 
 ---
 
-## 3. User Embedding Implementation
+## 3) User Embeddings
 
 Implementation: `src/embed/build_user_embeddings.py`
 
-For each user:
+Per user:
 
-1. Select latest `recent_k` events.
-2. Aggregate duplicate songs into `min_rank` and `play_count`.
-3. Apply medoid coherence filter.
-4. Weighted average over kept songs.
-5. L2-normalize final vector.
+1. Take recent `recent_k` events
+2. Aggregate by song -> `min_rank`, `play_count`
+3. Apply medoid coherence filter
+4. Weighted average
+5. L2 normalize
 
-Weights:
+Weighting:
 
 - `w_time = exp(-decay_lambda * age)`
 - `w_freq = 1 + log(1 + play_count)`
 - `w = normalize(w_time * w_freq)`
 
+Medoid coherence filter:
+
+- Build pairwise cosine matrix over candidate songs
+- Select medoid = song with highest mean similarity to others
+- Keep songs with `sim(song, medoid) >= medoid_threshold`
+- If kept songs `< min_keep`, fallback to top-`min_keep` nearest to medoid
+
 ---
 
-## 4. Profile / Prompt Implementation
+## 4) Profile and Prompt
+
+Implementations:
 
 - Retrieval export: `src/embed/export_user_profile_json.py`
-- Profile pipeline: `src/profile_prompt/profile_pipeline.py`
-- CLI runner: `src/profile_prompt/run_profile_pipeline.py`
+- Pipeline wrapper: `src/profile_prompt/profile_pipeline.py`
+- CLI entry: `src/profile_prompt/run_profile_pipeline.py`
 
-Outputs include:
+Flow:
+
+1. Top-K retrieval by cosine similarity in embedding space
+2. Build raw profile JSON by joining retrieval results with:
+   - `id_information.csv` (artist/song/album)
+   - `id_metadata.csv` (audio features)
+   - `id_genres.csv` (genres)
+   - `id_tags.csv` (tags)
+3. Build summary (`build_profile_features.py`)
+4. Generate profile paragraph + generation prompt with GPT (`gpt-5.4-mini` by default)
+
+Main outputs:
 
 - raw profile JSON
 - top-k summary JSON
@@ -110,40 +113,53 @@ Outputs include:
 
 ---
 
-## 5. Generation, Rerank, Eval
+## 5) Generation, Rerank, Eval
 
-### Generation
+### Generation (`src/generate/run_generate.py`)
 
-- `src/generate/run_generate.py`
-- Builds generation spec from prompt JSON
-- Writes run artifacts under `outputs/recSongs/<user>/<run>/`
+- Input: prompt JSON
+- Uses generation model `chirp-v4-5` (default)
+- Supports repeated calls (`num_calls`) and bounded parallelism (`max_concurrency`)
+- Writes run artifacts under `outputs/recSongs/<user>/<run>/`:
+  - `prompt_input.json`
+  - `generation_spec.json`
+  - `run_manifest.json`
+  - `report.md`
+  - `audio/`
 
-### Rerank
+### Rerank (`src/generate/rerank.py`)
 
-- `src/generate/rerank.py`
-- CLAP cosine scoring vs user embedding
+- Input: `run_manifest.json` + candidate audio paths
+- Embeds generated clips with CLAP (`auto`/`finetuned`/`zeroshot`)
+- Scores cosine similarity vs user embedding
 - Optional diversity filtering
-- Output: `rerank_results.json`
+- Output: `outputs/recSongs/<user>/<run>/rerank_results.json`
 
-### Eval
+### Eval (`src/eval/run_eval.py`)
 
-- `src/eval/run_eval.py`
-- Reuses rerank output if already present
-- Computes personalization/diversity/risk metrics
-- Outputs eval report artifacts under `outputs/eval/<user>/<run>/`
+- Input: manifest + rerank results
+- Reuses existing `rerank_results.json` if present
+- Computes:
+  - personalization
+  - diversity
+  - imitation risk
+- Outputs under `outputs/eval/<user>/<run>/`:
+  - `eval_summary.json`
+  - `eval_report.md`
+  - `reference_alignment.csv`
+  - `embedding_space.png` (optional)
 
 ---
 
-## 6. Naming and Reuse
+## 6) Naming and Reuse
 
-Gen4Rec uses parameter-encoded deterministic paths:
+Gen4Rec uses deterministic parameter-based paths:
 
-- Same params -> same key/path -> reuse
+- Same params -> same paths -> reuse
 - Changed params -> new key/path
 - `--force` / `--rebuild` -> recompute under same key
 
-Typical keys:
+Common keys:
 
 - Embedding key: `rk{recent_k}_dl{decay}_mt{medoid}_mk{min_keep}`
 - Profile key: `ev{embedding_variant}_tk{top_k}_ms{sim}_ex{0|1}_om{model}`
-
