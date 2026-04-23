@@ -37,6 +37,3 @@ env/
 # Local test / temp files
 tmp/
 temp/
-
-# Local docs not for push
-tech.md

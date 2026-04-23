@@ -6,11 +6,14 @@ Gen4Rec is an end-to-end generative music recommendation system. Instead of only
 
 Main stages:
 
-1. User embedding construction
-2. Profile and prompt generation
-3. Music generation
-4. Rerank
-5. Evaluation
+1. CLAP finetuning (optional, for stronger audio-text alignment)
+2. User embedding construction
+3. Profile and prompt generation
+4. Music generation
+5. Rerank
+6. Evaluation
+
+Implementation details: [`implementation.md`](implementation.md)
 
 ---
 
@@ -184,3 +187,11 @@ conda env create -f environment.yaml
 conda activate gen4rec
 streamlit run app/streamlit_app.py
 ```
+
+## Streamlit Query Comparison
+
+```bash
+streamlit run app/streamlit_query_compare.py
+```
+
+`streamlit_query_compare.py` is intended to compare query/retrieval behavior between finetuned embeddings and the baseline (zeroshot) setup.
