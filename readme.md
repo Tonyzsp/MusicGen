@@ -4,16 +4,18 @@
 
 Gen4Rec is an end-to-end generative music recommendation system. Instead of only retrieving existing tracks, it learns user preference embeddings from listening history, creates profile-driven music prompts, generates new candidate songs, reranks candidates in CLAP embedding space, and evaluates the final outputs with personalization, diversity, and imitation-risk metrics.
 
-Main stages:
+## Pipeline Overview
 
-1. CLAP finetuning (optional, for stronger audio-text alignment)
-2. User embedding construction
-3. Profile and prompt generation
-4. Music generation
-5. Rerank
-6. Evaluation
+The project runs in six main stages:
 
-Implementation details: [`implementation.md`](implementation.md)
+1. **CLAP Finetuning** *(optional)*: improves audio-text alignment quality.
+2. **User Embedding Construction**: builds user representations from listening history.
+3. **Profile and Prompt Generation**: creates personalized profile summaries and generation prompts.
+4. **Music Generation**: generates candidate tracks from prompts.
+5. **Rerank**: reorders candidates using similarity signals in embedding space.
+6. **Evaluation**: measures personalization, diversity, and imitation risk.
+
+Implementation details are documented in [`implementation.md`](implementation.md).
 
 ---
 
