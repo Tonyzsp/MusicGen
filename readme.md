@@ -1,5 +1,13 @@
 # Gen4Rec
 
+## Teammates
+
+1. Tony Zhao (`sz3822`) - [GitHub](https://github.com/Tonyzsp)
+2. Conny Fan (`jf4644`) - [GitHub](https://github.com/ConnyFan123)
+3. Jerry Huang (`jh8186`) - [GitHub](https://github.com/J-hjr)
+
+---
+
 ## Project Introduction
 
 Gen4Rec is an end-to-end generative music recommendation system. Instead of only retrieving existing tracks, it learns user preference embeddings from listening history, creates profile-driven music prompts, generates new candidate songs, reranks candidates in CLAP embedding space, and evaluates the final outputs with personalization, diversity, and imitation-risk metrics.
@@ -16,14 +24,6 @@ The project runs in six main stages:
 6. **Evaluation**: measures personalization, diversity, and imitation risk.
 
 Implementation details are documented in [`implementation.md`](implementation.md).
-
----
-
-## Teammates
-
-1. Tony Zhao (`sz3822`) - [GitHub](https://github.com/Tonyzsp)
-2. Conny Fan (`jf4644`) - [GitHub](https://github.com/ConnyFan123)
-3. Jerry Huang (`jh8186`) - [GitHub](https://github.com/J-hjr)
 
 ---
 
