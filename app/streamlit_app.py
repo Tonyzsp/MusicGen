@@ -33,6 +33,7 @@ from app.services.pipeline_service import (
     run_generation_for_user,
 )
 from app.services.viz_service import build_user_generation_figure
+from app.services.query_compare import render_query_compare_page
 from src.embed.build_user_embeddings import (
     Config as UserEmbConfig,
     ensure_local_file as ensure_useremb_local_file,
@@ -645,6 +646,7 @@ def main() -> None:
                 "Phase 1 - User Embedding",
                 "Phase 2 - Retrieval + Prompt",
                 "Phase 3 - Generate + Rerank + Evaluate",
+                "Query Compare (Base vs Finetuned)",
             ],
             index=0,
             horizontal=False,
@@ -653,6 +655,7 @@ def main() -> None:
         show_phase1_controls = view_section == "Phase 1 - User Embedding"
         show_phase2_controls = view_section == "Phase 2 - Retrieval + Prompt"
         show_phase3_controls = view_section == "Phase 3 - Generate + Rerank + Evaluate"
+        show_query_compare = view_section == "Query Compare (Base vs Finetuned)"
 
         phase1_user_id = st.session_state.get("phase1_user_id", "")
         phase1_embedding_variant = st.session_state.get("phase1_embedding_variant", "")
@@ -711,6 +714,11 @@ def main() -> None:
                 help="After coherence filtering, keep at least this many nearest-to-medoid songs.",
             )
             build_embedding_clicked = st.button("Build user embedding variant")
+
+    if show_query_compare:
+        st.caption("Compare retrieval results between zeroshot and finetuned embedding spaces.")
+        render_query_compare_page()
+        return
 
     if build_embedding_clicked:
         with st.spinner("Building user embedding variant..."):
