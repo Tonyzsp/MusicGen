@@ -628,34 +628,44 @@ def main() -> None:
     global_user_id = st.session_state.get("selected_user_id", "")
     with st.sidebar:
         st.header("Controls")
-        try:
-            all_known_users = get_all_known_users()
-        except Exception:
-            all_known_users = []
-        if all_known_users:
-            selected_idx = all_known_users.index(global_user_id) if global_user_id in all_known_users else 0
-            global_user_id = st.selectbox("Select user", all_known_users, index=selected_idx)
-            st.session_state["selected_user_id"] = global_user_id
-        else:
-            st.warning("No users found in listening history.")
-
-        view_section = st.radio(
-            "View section",
+        app_mode = st.radio(
+            "App section",
             options=[
-                "Intro",
-                "Phase 1 - User Embedding",
-                "Phase 2 - Retrieval + Prompt",
-                "Phase 3 - Generate + Rerank + Evaluate",
-                "Query Compare (Base vs Finetuned)",
+                "Embedding Retrieval (Base vs Finetuned)",
+                "Generate AI Song",
             ],
             index=0,
             horizontal=False,
-            help="Show only one phase to reduce on-screen clutter.",
+            help="Use one app with two separated modules.",
         )
-        show_phase1_controls = view_section == "Phase 1 - User Embedding"
-        show_phase2_controls = view_section == "Phase 2 - Retrieval + Prompt"
-        show_phase3_controls = view_section == "Phase 3 - Generate + Rerank + Evaluate"
-        show_query_compare = view_section == "Query Compare (Base vs Finetuned)"
+        show_query_compare = app_mode == "Embedding Retrieval (Base vs Finetuned)"
+        show_generate_page = app_mode == "Generate AI Song"
+        generate_section = "Overview"
+        if show_generate_page:
+            generate_section = st.radio(
+                "Generate section",
+                options=[
+                    "Overview",
+                    "Phase 1 - User Embedding",
+                    "Phase 2 - Retrieval + Prompt",
+                    "Phase 3 - Generate + Rerank + Evaluate",
+                ],
+                index=0,
+                horizontal=False,
+            )
+            try:
+                all_known_users = get_all_known_users()
+            except Exception:
+                all_known_users = []
+            if all_known_users:
+                selected_idx = all_known_users.index(global_user_id) if global_user_id in all_known_users else 0
+                global_user_id = st.selectbox("Select user", all_known_users, index=selected_idx)
+                st.session_state["selected_user_id"] = global_user_id
+            else:
+                st.warning("No users found in listening history.")
+        show_phase1_controls = show_generate_page and generate_section == "Phase 1 - User Embedding"
+        show_phase2_controls = show_generate_page and generate_section == "Phase 2 - Retrieval + Prompt"
+        show_phase3_controls = show_generate_page and generate_section == "Phase 3 - Generate + Rerank + Evaluate"
 
         phase1_user_id = st.session_state.get("phase1_user_id", "")
         phase1_embedding_variant = st.session_state.get("phase1_embedding_variant", "")
@@ -716,7 +726,7 @@ def main() -> None:
             build_embedding_clicked = st.button("Build user embedding variant")
 
     if show_query_compare:
-        st.caption("Compare retrieval results between zeroshot and finetuned embedding spaces.")
+        st.caption("Compare retrieval behavior in zeroshot vs finetuned embedding spaces.")
         render_query_compare_page()
         return
 
@@ -984,14 +994,14 @@ def main() -> None:
         else:
             st.warning("Profile prompt not ready yet.")
 
-    if view_section == "Intro":
-        st.markdown("## Intro")
+    if show_generate_page and generate_section == "Overview":
+        st.markdown("## Generate AI Song")
         st.caption(
-            f"Select user to generate AI songs based on listening history. Current user: `{user_id or '—'}`."
+            f"Generate personalized songs from listening history. Current user: `{user_id or '—'}`."
         )
         _render_procedure_brief()
 
-    if view_section == "Phase 1 - User Embedding":
+    if show_generate_page and generate_section == "Phase 1 - User Embedding":
         st.markdown("## Phase 1 — User Embedding + Profile Setup")
         p1 = st.columns(3)
         p1[0].metric("Embedding variant", phase1_embedding_variant or "—")
@@ -1077,7 +1087,7 @@ def main() -> None:
             except Exception as exc:
                 st.info(f"Phase 1 PCA unavailable: {exc}")
 
-    if view_section == "Phase 2 - Retrieval + Prompt":
+    if show_generate_page and generate_section == "Phase 2 - Retrieval + Prompt":
         st.markdown("## Phase 2 — Retrieval + Prompt")
         st.caption(f"Current user: `{user_id}` | Embedding variant: `{embedding_variant}`")
         st.subheader("Retrieval snapshot")
@@ -1090,7 +1100,7 @@ def main() -> None:
             st.subheader("LLM generation prompt")
             st.text_area("Prompt text", value=llm_prompt_text, height=120, disabled=True)
 
-    if view_section == "Phase 3 - Generate + Rerank + Evaluate":
+    if show_generate_page and generate_section == "Phase 3 - Generate + Rerank + Evaluate":
         st.markdown("## Phase 3 — Generate + Rerank + Evaluate")
         st.caption(f"Current user: `{user_id}` | Embedding variant: `{embedding_variant}`")
         if not profile_artifacts.prompt:

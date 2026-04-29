@@ -324,7 +324,7 @@ def _render_model_section(title: str, hits: list[dict], *, side: str, run_id: in
 
 def render_query_compare_page() -> None:
     _inject_styles()
-    st.title("Text/Audio → music retrieval")
+    st.title("Embedding Retrieval: Base vs Finetuned")
     st.caption(
         "Use a **text description** or **uploaded audio** query; we **retrieve songs** whose **audio embeddings** "
         "are closest in CLAP space (not keyword search in lyrics/metadata)."
@@ -476,5 +476,5 @@ def render_query_compare_page() -> None:
 
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="Gen4Rec · Text/Audio → music retrieval", layout="wide")
+    st.set_page_config(page_title="Gen4Rec · Embedding Retrieval Compare", layout="wide")
     render_query_compare_page()
