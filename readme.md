@@ -35,10 +35,9 @@ Gen4Rec/
 │   ├── services/
 │   │   ├── artifact_service.py
 │   │   ├── pipeline_service.py
+│   │   ├── query_compare.py
 │   │   └── viz_service.py
 │   ├── streamlit_app.py
-│   ├── streamlit_query_compare.py
-│   └── streamlit_text_compare.py
 ├── scripts/
 │   └── run_full_pipeline.py
 ├── src/
@@ -192,8 +191,10 @@ streamlit run app/streamlit_app.py
 
 ## Streamlit Query Comparison
 
+The query comparison page is now integrated in the main app:
+
 ```bash
-streamlit run app/streamlit_query_compare.py
+streamlit run app/streamlit_app.py
 ```
 
-`streamlit_query_compare.py` is intended to compare query/retrieval behavior between finetuned embeddings and the baseline (zeroshot) setup.
+Then open **View section** -> **Query Compare (Base vs Finetuned)**.
