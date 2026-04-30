@@ -1,0 +1,68 @@
+{
+  "user_id": "eason",
+  "source_top_k": 5,
+  "top_genres": [
+    "pop",
+    "classic rock",
+    "electronic",
+    "synthpop",
+    "progressive rock",
+    "rock",
+    "soft rock",
+    "singer-songwriter"
+  ],
+  "top_tags": [
+    "pop",
+    "80s",
+    "classic rock",
+    "electronic",
+    "90s",
+    "synthpop",
+    "1991",
+    "alternative",
+    "progressive rock",
+    "rock"
+  ],
+  "representative_artists": [
+    "Leo Sayer",
+    "Electronic",
+    "The Alan Parsons Project",
+    "Johnny Hates Jazz"
+  ],
+  "representative_tracks": [
+    {
+      "artist": "Electronic",
+      "song": "Get the Message"
+    },
+    {
+      "artist": "The Alan Parsons Project",
+      "song": "Games People Play"
+    },
+    {
+      "artist": "Leo Sayer",
+      "song": "More Than I Can Say - Remastered"
+    },
+    {
+      "artist": "Leo Sayer",
+      "song": "More Than I Can Say"
+    },
+    {
+      "artist": "Johnny Hates Jazz",
+      "song": "Turn the Tide"
+    }
+  ],
+  "audio_profile": {
+    "danceability_mean": 0.706,
+    "energy_mean": 0.673,
+    "valence_mean": 0.776,
+    "tempo_mean": 109.327
+  },
+  "mood_summary": [
+    "energetic",
+    "driving",
+    "warm",
+    "uplifting",
+    "mid-tempo"
+  ],
+  "rule_based_profile_paragraph": "This listener gravitates toward pop, classic rock, electronic, synthpop, with recurring traits such as pop, 80s, classic rock, electronic, 90s. Their retrieved songs suggest a preference for energetic, driving, warm, uplifting, often centered on expressive vocals and restrained arrangements. Representative artists include Leo Sayer, Electronic, The Alan Parsons Project, Johnny Hates Jazz, pointing to a taste for emotionally detailed, intimate music."
+}

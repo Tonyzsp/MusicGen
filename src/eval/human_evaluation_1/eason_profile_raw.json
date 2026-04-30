@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.1",
+  "user_id": "eason",
+  "top_k": 5,
+  "retrieval": {
+    "space": "clap_embedding_cosine",
+    "note": "similarity_score is dot product on L2-normalized 512-d vectors (equals cosine similarity)."
+  },
+  "songs": [
+    {
+      "rank": 1,
+      "song_id": "koINDRMjyis82VnL",
+      "similarity_score": 0.471984326839447,
+      "info": {
+        "artist": "Electronic",
+        "song": "Get the Message",
+        "album_name": "Electronic"
+      },
+      "metadata": {
+        "spotify_id": "5fUh73ihdzB2SaIftDD3EG",
+        "popularity": 32.0,
+        "release": 1991,
+        "danceability": 0.705,
+        "energy": 0.792,
+        "key": 7.0,
+        "mode": 1.0,
+        "valence": 0.948,
+        "tempo": 105.989,
+        "duration_ms": 320840
+      },
+      "genres": "electronic,pop,synthpop",
+      "tags": "electronic,90s,pop,synthpop,1991,alternative"
+    },
+    {
+      "rank": 2,
+      "song_id": "bsizTBFio63TNrJO",
+      "similarity_score": 0.4701476991176605,
+      "info": {
+        "artist": "The Alan Parsons Project",
+        "song": "Games People Play",
+        "album_name": "The Turn Of A Friendly Card (Expanded Edition)"
+      },
+      "metadata": {
+        "spotify_id": "2gQsUHVFY4tpXc3AFU2mcS",
+        "popularity": 50.0,
+        "release": 1980,
+        "danceability": 0.723,
+        "energy": 0.6829999999999999,
+        "key": 11.0,
+        "mode": 0.0,
+        "valence": 0.693,
+        "tempo": 132.023,
+        "duration_ms": 263107
+      },
+      "genres": "progressive rock,classic rock,rock",
+      "tags": "progressive rock,classic rock,rock,80s,alan parsons"
+    },
+    {
+      "rank": 3,
+      "song_id": "dh24nvkDqfforrSY",
+      "similarity_score": 0.46419310569763184,
+      "info": {
+        "artist": "Leo Sayer",
+        "song": "More Than I Can Say - Remastered",
+        "album_name": "Living In A Fantasy"
+      },
+      "metadata": {
+        "spotify_id": "3RJ81z1sPLeWEFuCfGaCLC",
+        "popularity": 37.0,
+        "release": 1980,
+        "danceability": 0.728,
+        "energy": 0.511,
+        "key": 10.0,
+        "mode": 1.0,
+        "valence": 0.7140000000000001,
+        "tempo": 96.406,
+        "duration_ms": 220533
+      },
+      "genres": "pop",
+      "tags": "pop"
+    },
+    {
+      "rank": 4,
+      "song_id": "i8EV9oYsJ7YJjMqy",
+      "similarity_score": 0.46419310569763184,
+      "info": {
+        "artist": "Leo Sayer",
+        "song": "More Than I Can Say",
+        "album_name": "Living In A Fantasy"
+      },
+      "metadata": {
+        "spotify_id": "3RJ81z1sPLeWEFuCfGaCLC",
+        "popularity": 37.0,
+        "release": 1980,
+        "danceability": 0.728,
+        "energy": 0.511,
+        "key": 10.0,
+        "mode": 1.0,
+        "valence": 0.7140000000000001,
+        "tempo": 96.406,
+        "duration_ms": 220533
+      },
+      "genres": "pop,soft rock,classic rock,pop,singer-songwriter",
+      "tags": "80s,pop,soft rock,classic rock,oldies,pop,70s,singer-songwriter"
+    },
+    {
+      "rank": 5,
+      "song_id": "JsWYzPqIsKMmgeAt",
+      "similarity_score": 0.46334388852119446,
+      "info": {
+        "artist": "Johnny Hates Jazz",
+        "song": "Turn the Tide",
+        "album_name": "The Very Best Of Johnny Hates Jazz"
+      },
+      "metadata": {
+        "spotify_id": "5UsrYUD9nVNQ2CuneQ3c2z",
+        "popularity": 21.0,
+        "release": 1993,
+        "danceability": 0.645,
+        "energy": 0.8690000000000001,
+        "key": 9.0,
+        "mode": 0.0,
+        "valence": 0.8109999999999999,
+        "tempo": 115.809,
+        "duration_ms": 224760
+      },
+      "genres": "pop",
+      "tags": "pop,british,80s,male vocalists"
+    }
+  ]
+}
