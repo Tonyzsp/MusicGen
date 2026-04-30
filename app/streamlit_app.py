@@ -458,6 +458,11 @@ def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> 
     summary_cols[0].metric("Run ID", run_artifacts.run_id)
     summary_cols[1].metric("Candidates", len(run_artifacts.tracks))
     selected_count = len([track for track in run_artifacts.tracks if track.is_selected])
+    with st.expander("Run diagnostics", expanded=False):
+        st.caption("Loaded artifact paths and selection status for troubleshooting.")
+        st.write("Run root:", str(run_artifacts.run_root))
+        st.write("Rerank result path:", str(run_artifacts.rerank_path))
+        st.write("Selected track count:", selected_count)
     summary_cols[2].metric("Selected", selected_count)
     summary_cols[3].metric("Provider", run_artifacts.manifest.get("provider", "unknown"))
 
