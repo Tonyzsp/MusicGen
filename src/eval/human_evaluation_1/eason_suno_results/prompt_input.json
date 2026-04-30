@@ -1,0 +1,83 @@
+{
+  "user_id": "eason",
+  "input_summary": {
+    "user_id": "eason",
+    "source_top_k": 5,
+    "top_genres": [
+      "pop",
+      "classic rock",
+      "electronic",
+      "synthpop",
+      "progressive rock",
+      "rock",
+      "soft rock",
+      "singer-songwriter"
+    ],
+    "top_tags": [
+      "pop",
+      "80s",
+      "classic rock",
+      "electronic",
+      "90s",
+      "synthpop",
+      "1991",
+      "alternative",
+      "progressive rock",
+      "rock"
+    ],
+    "representative_artists": [
+      "Leo Sayer",
+      "Electronic",
+      "The Alan Parsons Project",
+      "Johnny Hates Jazz"
+    ],
+    "representative_tracks": [
+      {
+        "artist": "Electronic",
+        "song": "Get the Message"
+      },
+      {
+        "artist": "The Alan Parsons Project",
+        "song": "Games People Play"
+      },
+      {
+        "artist": "Leo Sayer",
+        "song": "More Than I Can Say - Remastered"
+      },
+      {
+        "artist": "Leo Sayer",
+        "song": "More Than I Can Say"
+      },
+      {
+        "artist": "Johnny Hates Jazz",
+        "song": "Turn the Tide"
+      }
+    ],
+    "audio_profile": {
+      "danceability_mean": 0.706,
+      "energy_mean": 0.673,
+      "valence_mean": 0.776,
+      "tempo_mean": 109.327
+    },
+    "mood_summary": [
+      "energetic",
+      "driving",
+      "warm",
+      "uplifting",
+      "mid-tempo"
+    ],
+    "rule_based_profile_paragraph": "This listener gravitates toward pop, classic rock, electronic, synthpop, with recurring traits such as pop, 80s, classic rock, electronic, 90s. Their retrieved songs suggest a preference for energetic, driving, warm, uplifting, often centered on expressive vocals and restrained arrangements. Representative artists include Leo Sayer, Electronic, The Alan Parsons Project, Johnny Hates Jazz, pointing to a taste for emotionally detailed, intimate music."
+  },
+  "profile_paragraph": "This listener has a refined appreciation for a blend of pop, classic and progressive rock, intertwined with electronic and synthpop elements evocative of the 80s and 90s. Their taste favors energetic yet warm, driving mid-tempo tracks highlighted by emotive, expressive vocals layered over polished, restrained arrangements. The presence of artists like Leo Sayer and The Alan Parsons Project suggests a preference for music that balances intimacy and sophistication, mixing classic rock's dynamic instrumentation with synth-driven textures, delivering uplifting and emotionally nuanced soundscapes.",
+  "suno_generation_prompt": "Create an energetic, mid-tempo track blending 80s synthpop, classic and progressive rock with warm, driving pop vocals. Use polished electronic synth layers, textured guitars, and tight rhythm section. Emphasize expressive, intimate vocals with moderate arrangement density and uplifting mood. Avoid heavy distortion or overly complex progressive breaks.",
+  "style_keywords": [
+    "80s synthpop",
+    "classic rock",
+    "progressive textures",
+    "expressive vocals",
+    "mid-tempo driving",
+    "warm electronic synths",
+    "uptempo pop energy",
+    "polished arrangements"
+  ]
+}

@@ -1,0 +1,179 @@
+{
+  "run_id": "20260402T203009Z-eason-suno",
+  "user_id": "eason",
+  "provider": "suno",
+  "generation_model": "chirp-v4-5",
+  "num_calls": 1,
+  "max_concurrency": 1,
+  "artifacts": {
+    "prompt_input_json": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/prompt_input.json",
+    "generation_spec_json": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/generation_spec.json",
+    "audio_dir": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio",
+    "manifest_json": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/run_manifest.json",
+    "report_md": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/report.md"
+  },
+  "generation_spec": {
+    "schema_version": "1.0",
+    "user_id": "eason",
+    "provider_target": "suno",
+    "prompt_version": "milestone2",
+    "generation_prompt": "Create an energetic, mid-tempo track blending 80s synthpop, classic and progressive rock with warm, driving pop vocals. Use polished electronic synth layers, textured guitars, and tight rhythm section. Emphasize expressive, intimate vocals with moderate arrangement density and uplifting mood. Avoid heavy distortion or overly complex progressive breaks.",
+    "negative_prompt": null,
+    "style_keywords": [
+      "80s synthpop",
+      "classic rock",
+      "progressive textures",
+      "expressive vocals",
+      "mid-tempo driving",
+      "warm electronic synths",
+      "uptempo pop energy",
+      "polished arrangements"
+    ],
+    "instrumentation": [],
+    "lyrics": "",
+    "sections": [],
+    "tempo_hint_bpm": null,
+    "duration_hint_seconds": null,
+    "profile_paragraph": "This listener has a refined appreciation for a blend of pop, classic and progressive rock, intertwined with electronic and synthpop elements evocative of the 80s and 90s. Their taste favors energetic yet warm, driving mid-tempo tracks highlighted by emotive, expressive vocals layered over polished, restrained arrangements. The presence of artists like Leo Sayer and The Alan Parsons Project suggests a preference for music that balances intimacy and sophistication, mixing classic rock's dynamic instrumentation with synth-driven textures, delivering uplifting and emotionally nuanced soundscapes.",
+    "input_summary": {
+      "user_id": "eason",
+      "source_top_k": 5,
+      "top_genres": [
+        "pop",
+        "classic rock",
+        "electronic",
+        "synthpop",
+        "progressive rock",
+        "rock",
+        "soft rock",
+        "singer-songwriter"
+      ],
+      "top_tags": [
+        "pop",
+        "80s",
+        "classic rock",
+        "electronic",
+        "90s",
+        "synthpop",
+        "1991",
+        "alternative",
+        "progressive rock",
+        "rock"
+      ],
+      "representative_artists": [
+        "Leo Sayer",
+        "Electronic",
+        "The Alan Parsons Project",
+        "Johnny Hates Jazz"
+      ],
+      "representative_tracks": [
+        {
+          "artist": "Electronic",
+          "song": "Get the Message"
+        },
+        {
+          "artist": "The Alan Parsons Project",
+          "song": "Games People Play"
+        },
+        {
+          "artist": "Leo Sayer",
+          "song": "More Than I Can Say - Remastered"
+        },
+        {
+          "artist": "Leo Sayer",
+          "song": "More Than I Can Say"
+        },
+        {
+          "artist": "Johnny Hates Jazz",
+          "song": "Turn the Tide"
+        }
+      ],
+      "audio_profile": {
+        "danceability_mean": 0.706,
+        "energy_mean": 0.673,
+        "valence_mean": 0.776,
+        "tempo_mean": 109.327
+      },
+      "mood_summary": [
+        "energetic",
+        "driving",
+        "warm",
+        "uplifting",
+        "mid-tempo"
+      ],
+      "rule_based_profile_paragraph": "This listener gravitates toward pop, classic rock, electronic, synthpop, with recurring traits such as pop, 80s, classic rock, electronic, 90s. Their retrieved songs suggest a preference for energetic, driving, warm, uplifting, often centered on expressive vocals and restrained arrangements. Representative artists include Leo Sayer, Electronic, The Alan Parsons Project, Johnny Hates Jazz, pointing to a taste for emotionally detailed, intimate music."
+    }
+  },
+  "candidate_audio_paths": [
+    "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01.mp3",
+    "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.mp3"
+  ],
+  "rerank_ready": {
+    "user_id": "eason",
+    "candidate_count": 2,
+    "next_inputs": {
+      "user_id": "eason",
+      "user_embedding": "load from outputs/embeddings/music4all/user_embeddings.npy",
+      "generated_audio_file_paths": [
+        "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01.mp3",
+        "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.mp3"
+      ]
+    }
+  },
+  "result": {
+    "provider": "suno",
+    "model": "chirp-v4-5",
+    "prompt_used": "Create an energetic, mid-tempo track blending 80s synthpop, classic and progressive rock with warm, driving pop vocals. Use polished electronic synth layers, textured guitars, and tight rhythm section. Emphasize expressive, intimate vocals with moderate arrangement density and uplifting mood. Avoid heavy distortion or overly complex progressive breaks.",
+    "negative_prompt_used": null,
+    "request_payload": {
+      "action": "generate",
+      "model": "chirp-v4-5",
+      "user_id": "eason",
+      "style": "80s synthpop, classic rock, progressive textures, expressive vocals, mid-tempo driving, warm electronic synths, uptempo pop energy, polished arrangements",
+      "custom": false,
+      "instrumental": true,
+      "num_calls": 1
+    },
+    "response_metadata": {
+      "call_count": 1,
+      "variant_count": 2,
+      "calls": [
+        {
+          "call_index": 1,
+          "response_metadata": {
+            "success": true,
+            "task_id": "ba5b6926-ad2e-4be7-9d84-3a7988ddf40b",
+            "trace_id": "2d835c3a-6c03-4245-bda6-9b1669caf0a1",
+            "started_at": "2026-04-02T20:30:09.991Z",
+            "finished_at": "2026-04-02T20:31:48.826Z",
+            "elapsed": 98.835,
+            "variant_count": 2
+          },
+          "sample_count": 2
+        }
+      ]
+    },
+    "samples": [
+      {
+        "path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01.mp3",
+        "mime_type": "audio/mpeg",
+        "text_companion": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01_lyrics.txt",
+        "source_url": "https://cdn1.suno.ai/a218d7f5-afeb-47b0-8610-5a93dcf038ae.mp3",
+        "metadata_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01.json",
+        "call_index": 1,
+        "variant_index": 1,
+        "title": "Chromatic Skyline"
+      },
+      {
+        "path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.mp3",
+        "mime_type": "audio/mpeg",
+        "text_companion": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02_lyrics.txt",
+        "source_url": "https://cdn1.suno.ai/02bf76ad-89be-4c77-be1b-0bbf807fbe52.mp3",
+        "metadata_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.json",
+        "call_index": 1,
+        "variant_index": 2,
+        "title": "Chromatic Skyline"
+      }
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "user_id": "eason",
+  "candidate_count": 2,
+  "ranking_metric": "clap_cosine_similarity",
+  "encoder": "zeroshot",
+  "diversity_threshold": null,
+  "candidates": [
+    {
+      "path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.mp3",
+      "title": "Chromatic Skyline",
+      "call_index": 1,
+      "variant_index": 2,
+      "metadata_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.json",
+      "lyric_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02_lyrics.txt",
+      "source_url": "https://cdn1.suno.ai/02bf76ad-89be-4c77-be1b-0bbf807fbe52.mp3",
+      "clap_cosine_score": 0.22193941473960876
+    },
+    {
+      "path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01.mp3",
+      "title": "Chromatic Skyline",
+      "call_index": 1,
+      "variant_index": 1,
+      "metadata_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01.json",
+      "lyric_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01_lyrics.txt",
+      "source_url": "https://cdn1.suno.ai/a218d7f5-afeb-47b0-8610-5a93dcf038ae.mp3",
+      "clap_cosine_score": 0.1935136914253235
+    }
+  ],
+  "reranked_list": [
+    "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.mp3",
+    "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_01.mp3"
+  ],
+  "final_selected_tracks": [
+    {
+      "path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.mp3",
+      "title": "Chromatic Skyline",
+      "call_index": 1,
+      "variant_index": 2,
+      "metadata_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02.json",
+      "lyric_path": "/Users/conny_fan/Desktop/Gen4Rec/outputs/recSongs/eason/20260402T203009Z-eason-suno/audio/call_01/chromatic_skyline_variant_02_lyrics.txt",
+      "source_url": "https://cdn1.suno.ai/02bf76ad-89be-4c77-be1b-0bbf807fbe52.mp3",
+      "clap_cosine_score": 0.22193941473960876
+    }
+  ]
+}
