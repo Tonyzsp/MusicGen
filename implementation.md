@@ -149,6 +149,77 @@ Main outputs:
   - `reference_alignment.csv`
   - `embedding_space.png` (optional)
 
+### Evaluation 2: Human User Study Setup
+
+This evaluation collects each participant's recent/favorite songs, converts them
+into local 30-second clips, and uses those clips for the personalized user-study
+pipeline.
+
+Participant input template:
+
+- Template: `data/raw_for_eval/manifest_template.csv`
+- Per-participant input: `data/raw_for_eval/<participant_id>/manifest.csv`
+- Required columns:
+  - `song_id`: unique id used for local filenames, e.g. `jerry_001`
+  - `artist`: optional but recommended for better YouTube search
+  - `title`: song title
+
+Example:
+
+```csv
+song_id,artist,title
+jerry_001,Mineral,Unfinished
+jerry_002,Penfold,I'll Take You Everywhere
+```
+
+Download YouTube audio and build middle 30-second clips:
+
+```bash
+conda run -n gen4rec python scripts/user_history_download.py \
+  --participant-id jerry \
+  --input data/raw_for_eval/jerry/manifest.csv
+```
+
+The script searches YouTube with `artist + title + official audio`, downloads
+audio with `yt-dlp`, converts it with FFmpeg, and clips the middle 30 seconds of
+each track.
+
+Outputs:
+
+```text
+data/raw_for_eval/<participant_id>/
+  manifest.csv              # local participant input; do not commit
+  download_manifest.csv     # matched YouTube metadata and processing status
+  raw/                      # downloaded mp3 files
+  clips_30s/                # 30-second wav clips
+```
+
+Useful options:
+
+```bash
+# Re-download and recreate clips even if files already exist.
+conda run -n gen4rec python scripts/user_history_download.py \
+  --participant-id jerry \
+  --input data/raw_for_eval/jerry/manifest.csv \
+  --force
+
+# If artist is unknown, leave artist blank in the CSV. The script will search by title.
+```
+
+Please be aware that template should be placed under human annotator's folder.
+
+Check `download_manifest.csv` after each run. Confirm that `youtube_title` and
+`youtube_url` match the intended songs before using the clips for CLAP embedding
+or human evaluation.
+
+Git hygiene:
+
+- Commit the code and template:
+  - `scripts/user_history_download.py`
+  - `data/raw_for_eval/manifest_template.csv`
+- Do not commit participant inputs, downloaded audio, generated clips, or
+  `download_manifest.csv`. These are ignored by `.gitignore`.
+
 ---
 
 ## 6) Naming and Reuse
