@@ -39,6 +39,44 @@ def _join_pipe(values: Any) -> str:
     return "|".join(_text(v) for v in values if _text(v))
 
 
+def _tag_names_and_urls(tags: Any) -> tuple[str, str]:
+    raw_tags = (tags or {}).get("tag") if isinstance(tags, dict) else tags
+    if isinstance(raw_tags, dict):
+        raw_tags = [raw_tags]
+    if not isinstance(raw_tags, list):
+        return "", ""
+
+    names: list[str] = []
+    urls: list[str] = []
+    for item in raw_tags:
+        if isinstance(item, str):
+            name = _text(item)
+            url = ""
+        elif isinstance(item, dict):
+            name = _text(item.get("name"))
+            url = _text(item.get("url"))
+        else:
+            continue
+        if not name:
+            continue
+        names.append(name)
+        urls.append(url)
+    return "|".join(names), "|".join(urls)
+
+
+def _relation_url(relations: Any, relation_type: str) -> str:
+    if isinstance(relations, dict):
+        relations = [relations]
+    if not isinstance(relations, list):
+        return ""
+    for item in relations:
+        if not isinstance(item, dict):
+            continue
+        if _text(item.get("type")).casefold() == relation_type.casefold():
+            return _text(item.get("target"))
+    return ""
+
+
 def _pick_image_url(urls: Any) -> str:
     if isinstance(urls, str):
         return urls.strip()
@@ -119,6 +157,7 @@ def _build_album_records(album_dir: Path, known_ids: set[str], info: dict[str, d
         song_ids = [str(sid) for sid in (data.get("music4all_onion_id") or []) if str(sid) in known_ids]
         if not song_ids:
             continue
+        album_tags, album_tag_urls = _tag_names_and_urls(album.get("tags"))
         record_base = {
             "album_mbid": _text(data.get("mbid") or album.get("mbid") or path.stem),
             "album_name": _text(album.get("name")),
@@ -128,6 +167,8 @@ def _build_album_records(album_dir: Path, known_ids: set[str], info: dict[str, d
             "album_listeners": _text(album.get("listeners")),
             "album_playcount": _text(album.get("playcount")),
             "album_genres": _join_pipe(album.get("genres")),
+            "album_tags": album_tags,
+            "album_tag_urls": album_tag_urls,
             "album_summary": _text((album.get("wiki") or {}).get("summary")),
             "album_lastfm_url": _text(album.get("url")),
         }
@@ -160,6 +201,7 @@ def _build_artist_records(artist_dir: Path, known_ids: set[str], info: dict[str,
             "artist_life_span_end": _text(life_span.get("end")),
             "artist_genres": _join_pipe(artist.get("genres")),
             "artist_summary": _text((artist.get("wiki") or {}).get("summary")),
+            "artist_lastfm_url": _relation_url(artist.get("url-relation-list"), "last.fm"),
         }
         for song_id in song_ids:
             conflicts += int(

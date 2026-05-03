@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
+from urllib.parse import quote_plus
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -117,6 +118,15 @@ def get_variant_user_embeddings(embedding_variant: str) -> tuple[np.ndarray, np.
 
 
 @st.cache_data(show_spinner=False)
+def _load_music4all_aa_song_index(path_str: str, mtime: float) -> dict[str, dict[str, object]]:
+    path = Path(path_str)
+    df = pd.read_parquet(path)
+    if "song_id" not in df.columns:
+        return {}
+    df = df.astype(object).where(pd.notna(df), None)
+    return {str(row["song_id"]): row for row in df.to_dict("records") if row.get("song_id")}
+
+
 def get_music4all_aa_song_index() -> dict[str, dict[str, object]]:
     path = Path(
         os.environ.get(
@@ -126,11 +136,7 @@ def get_music4all_aa_song_index() -> dict[str, dict[str, object]]:
     )
     if not path.is_file():
         return {}
-    df = pd.read_parquet(path)
-    if "song_id" not in df.columns:
-        return {}
-    df = df.astype(object).where(pd.notna(df), None)
-    return {str(row["song_id"]): row for row in df.to_dict("records") if row.get("song_id")}
+    return _load_music4all_aa_song_index(str(path), path.stat().st_mtime)
 
 
 def _format_metric_value(value: float | int | None) -> str:
@@ -162,6 +168,83 @@ def _aa_genre_caption(row: dict[str, object] | None, key: str, *, limit: int = 3
     return ", ".join(values[:limit])
 
 
+def _lastfm_tag_url(tag: str) -> str:
+    return f"https://www.last.fm/tag/{quote_plus(tag)}"
+
+
+def _html_escape(value: object) -> str:
+    return (
+        str(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def _linked_tag_chips(values: str, *, limit: int = 3) -> str:
+    tags = [part.strip() for part in values.split("|") if part.strip()][:limit]
+    if not tags:
+        return ""
+    chips = "".join(
+        (
+            '<a class="aa-profile-chip" '
+            f'href="{_html_escape(_lastfm_tag_url(tag))}" '
+            f'target="_blank" rel="noopener noreferrer">{_html_escape(tag)}</a>'
+        )
+        for tag in tags
+    )
+    return f'<div class="aa-profile-chip-row">{chips}</div>'
+
+
+def _inject_profile_visual_styles() -> None:
+    st.markdown(
+        """
+<style>
+  .aa-profile-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.22rem;
+    margin-top: 0.30rem;
+  }
+  .aa-profile-chip {
+    border: 1px solid rgba(148, 163, 184, 0.30);
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.10);
+    color: #dbeafe !important;
+    display: inline-block;
+    font-size: 0.66rem;
+    line-height: 1;
+    padding: 0.25rem 0.42rem;
+    text-decoration: none !important;
+  }
+  .aa-profile-chip:hover {
+    border-color: rgba(96, 165, 250, 0.70);
+    background: rgba(59, 130, 246, 0.22);
+    color: #ffffff !important;
+  }
+  .aa-profile-title-link {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  .aa-profile-title-link:hover {
+    color: #dbeafe !important;
+    text-decoration: underline !important;
+  }
+  .aa-profile-detail-link {
+    color: #cbd5e1 !important;
+    text-decoration: none !important;
+  }
+  .aa-profile-detail-link:hover {
+    color: #ffffff !important;
+    text-decoration: underline !important;
+  }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
+
 def _render_visual_card(item: dict[str, str]) -> None:
     try:
         shell = st.container(border=True)
@@ -171,11 +254,24 @@ def _render_visual_card(item: dict[str, str]) -> None:
         st.image(item["image_url"], use_container_width=True)
         if item.get("kicker"):
             st.caption(item["kicker"])
-        st.markdown(f"**{item['title']}**")
+        if item.get("url"):
+            st.markdown(
+                (
+                    f'<strong><a class="aa-profile-title-link" href="{_html_escape(item["url"])}" '
+                    f'target="_blank" rel="noopener noreferrer">{_html_escape(item["title"])}</a></strong>'
+                ),
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(f"**{item['title']}**")
         if item.get("subtitle"):
             st.caption(item["subtitle"])
+        if item.get("detail_html"):
+            st.markdown(item["detail_html"], unsafe_allow_html=True)
         if item.get("detail"):
             st.caption(item["detail"])
+        if item.get("detail_md"):
+            st.markdown(item["detail_md"], unsafe_allow_html=True)
 
 
 def _render_visual_gallery(title: str, caption: str, items: list[dict[str, str]], *, columns: int = 5) -> None:
@@ -229,6 +325,7 @@ def _profile_visual_items(profile_artifacts: ProfileArtifacts, summary: dict) ->
                 "image_url": artist_image,
                 "kicker": "Artist",
                 "title": artist_name,
+                "url": _aa_text(enrichment, "artist_lastfm_url"),
                 "subtitle": " · ".join(
                     part
                     for part in (
@@ -237,7 +334,7 @@ def _profile_visual_items(profile_artifacts: ProfileArtifacts, summary: dict) ->
                     )
                     if part
                 ),
-                "detail": _aa_genre_caption(enrichment, "artist_genres"),
+                "detail_md": _linked_tag_chips(_aa_text(enrichment, "artist_genres")),
             }
             score = (priority, retrieval_rank)
             current = artist_candidates.get(artist_key)
@@ -254,7 +351,15 @@ def _profile_visual_items(profile_artifacts: ProfileArtifacts, summary: dict) ->
                 "kicker": "Track",
                 "title": track_title,
                 "subtitle": track_artist,
-                "detail": f"Album: {album_name}",
+                "detail_html": (
+                    f'<span style="font-size: 0.85rem; color: #94a3b8;">Album: '
+                    f'<a class="aa-profile-detail-link" href="{_html_escape(_aa_text(enrichment, "album_lastfm_url"))}" '
+                    f'target="_blank" rel="noopener noreferrer">{_html_escape(album_name)}</a></span>'
+                    if _aa_text(enrichment, "album_lastfm_url")
+                    else ""
+                ),
+                "detail": "" if _aa_text(enrichment, "album_lastfm_url") else f"Album: {album_name}",
+                "detail_md": _linked_tag_chips(_aa_text(enrichment, "album_genres")),
             }
             score = (priority, retrieval_rank)
             current = album_candidates.get(album_key)
@@ -272,6 +377,7 @@ def _render_profile_visual_context(profile_artifacts: ProfileArtifacts, summary:
         return
 
     with st.expander("Visual listening context", expanded=True):
+        _inject_profile_visual_styles()
         st.caption("Images are matched from Music4All A+A using the retrieved song IDs; track artwork uses album covers.")
         if artists:
             _render_visual_gallery(

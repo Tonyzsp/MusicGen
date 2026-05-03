@@ -13,6 +13,7 @@ from pathlib import Path
 import sys
 import tempfile
 from typing import Any
+from urllib.parse import quote_plus
 
 import pandas as pd
 import streamlit as st
@@ -79,6 +80,14 @@ def _inject_styles() -> None:
     line-height: 1.15;
     margin-bottom: 0.2rem;
   }
+  .tc-aa-title a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .tc-aa-title a:hover {
+    color: #dbeafe;
+    text-decoration: underline;
+  }
   .tc-aa-subtitle { color: #94a3b8; font-size: 0.86rem; margin-bottom: 0.45rem; }
   .tc-aa-summary {
     color: inherit;
@@ -96,6 +105,15 @@ def _inject_styles() -> None:
     line-height: 1;
     padding: 0.34rem 0.55rem;
     background: rgba(148, 163, 184, 0.10);
+  }
+  .tc-chip-row a.tc-chip {
+    color: #dbeafe;
+    text-decoration: none;
+  }
+  .tc-chip-row a.tc-chip:hover {
+    border-color: rgba(96, 165, 250, 0.70);
+    color: #ffffff;
+    background: rgba(59, 130, 246, 0.22);
   }
   .tc-stat-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.35rem; }
   .tc-stat-pill {
@@ -134,6 +152,15 @@ def _cached_matrices():
 
 
 @st.cache_data(show_spinner=False)
+def _load_aa_song_index(path_str: str, mtime: float) -> dict[str, dict[str, Any]]:
+    path = Path(path_str)
+    df = pd.read_parquet(path)
+    if "song_id" not in df.columns:
+        return {}
+    df = df.astype(object).where(pd.notna(df), None)
+    return {str(row["song_id"]): row for row in df.to_dict("records") if row.get("song_id")}
+
+
 def _cached_aa_song_index() -> dict[str, dict[str, Any]]:
     path = Path(
         os.environ.get(
@@ -143,11 +170,7 @@ def _cached_aa_song_index() -> dict[str, dict[str, Any]]:
     )
     if not path.is_file():
         return {}
-    df = pd.read_parquet(path)
-    if "song_id" not in df.columns:
-        return {}
-    df = df.astype(object).where(pd.notna(df), None)
-    return {str(row["song_id"]): row for row in df.to_dict("records") if row.get("song_id")}
+    return _load_aa_song_index(str(path), path.stat().st_mtime)
 
 
 def _song_artist(hit: dict) -> tuple[str, str]:
@@ -210,6 +233,28 @@ def _chip_html(values: list[str]) -> str:
         return ""
     chips = "".join(f'<span class="tc-chip">{_h(value)}</span>' for value in values)
     return f'<div class="tc-chip-row">{chips}</div>'
+
+
+def _lastfm_tag_url(tag: str) -> str:
+    return f"https://www.last.fm/tag/{quote_plus(tag)}"
+
+
+def _lastfm_tag_chip_html(values: list[str]) -> str:
+    return _linked_chip_html(values, [_lastfm_tag_url(value) for value in values])
+
+
+def _linked_chip_html(names: list[str], urls: list[str]) -> str:
+    chips: list[str] = []
+    for name, url in zip(names, urls):
+        if not name:
+            continue
+        if url.startswith(("http://", "https://")):
+            chips.append(f'<a class="tc-chip" href="{_h(url)}" target="_blank" rel="noopener noreferrer">{_h(name)}</a>')
+        else:
+            chips.append(f'<span class="tc-chip">{_h(name)}</span>')
+    if not chips:
+        return ""
+    return f'<div class="tc-chip-row">{"".join(chips)}</div>'
 
 
 def _stat_pills(items: list[tuple[str, str]]) -> str:
@@ -357,16 +402,28 @@ def _render_aa_context(enrichment: dict[str, Any] | None) -> None:
             album_name = _aa_field(enrichment, "album_name")
             album_artist = _aa_field(enrichment, "album_artist")
             release_date = _aa_field(enrichment, "album_release_date")
+            album_url = _aa_field(enrichment, "album_lastfm_url")
             st.markdown('<div class="tc-aa-kicker">Music4All A+A</div>', unsafe_allow_html=True)
             title = album_name or _aa_field(enrichment, "artist_name") or "Enriched music context"
             subtitle = " · ".join(item for item in (album_artist, release_date) if item)
-            st.markdown(f'<div class="tc-aa-title">{_h(title)}</div>', unsafe_allow_html=True)
+            if album_url:
+                st.markdown(
+                    f'<div class="tc-aa-title"><a href="{_h(album_url)}" target="_blank" rel="noopener noreferrer">{_h(title)}</a></div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(f'<div class="tc-aa-title">{_h(title)}</div>', unsafe_allow_html=True)
             if subtitle:
                 st.markdown(f'<div class="tc-aa-subtitle">{_h(subtitle)}</div>', unsafe_allow_html=True)
 
             album_genres = _aa_pipe_values(enrichment, "album_genres", limit=6)
             if album_genres:
-                st.markdown(_chip_html(album_genres), unsafe_allow_html=True)
+                st.markdown(_lastfm_tag_chip_html(album_genres), unsafe_allow_html=True)
+            album_tags = _aa_pipe_values(enrichment, "album_tags", limit=5)
+            album_tag_urls = _aa_pipe_values(enrichment, "album_tag_urls", limit=5)
+            if album_tags:
+                st.caption("Last.fm tags")
+                st.markdown(_linked_chip_html(album_tags, album_tag_urls), unsafe_allow_html=True)
 
             listeners = _count_label(_aa_field(enrichment, "album_listeners"))
             playcount = _count_label(_aa_field(enrichment, "album_playcount"))
@@ -389,8 +446,15 @@ def _render_aa_context(enrichment: dict[str, Any] | None) -> None:
                         st.image(artist_image, use_container_width=True)
                 with artist_cols[1]:
                     artist_name = _aa_field(enrichment, "artist_name")
+                    artist_url = _aa_field(enrichment, "artist_lastfm_url")
                     if artist_name:
-                        st.markdown(f'<div class="tc-aa-title">{_h(artist_name)}</div>', unsafe_allow_html=True)
+                        if artist_url:
+                            st.markdown(
+                                f'<div class="tc-aa-title"><a href="{_h(artist_url)}" target="_blank" rel="noopener noreferrer">{_h(artist_name)}</a></div>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(f'<div class="tc-aa-title">{_h(artist_name)}</div>', unsafe_allow_html=True)
                     details = [
                         _aa_field(enrichment, "artist_type"),
                         _aa_field(enrichment, "artist_country"),
@@ -403,7 +467,7 @@ def _render_aa_context(enrichment: dict[str, Any] | None) -> None:
                         )
                     artist_genres = _aa_pipe_values(enrichment, "artist_genres", limit=8)
                     if artist_genres:
-                        st.markdown(_chip_html(artist_genres), unsafe_allow_html=True)
+                        st.markdown(_lastfm_tag_chip_html(artist_genres), unsafe_allow_html=True)
 
 
 def _render_query_templates() -> None:
