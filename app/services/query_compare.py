@@ -19,6 +19,7 @@ import streamlit as st
 
 CURRENT_FILE = Path(__file__).resolve()
 REPO_ROOT = CURRENT_FILE.parent.parent
+PROJECT_ROOT = CURRENT_FILE.parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -62,8 +63,50 @@ def _inject_styles() -> None:
     st.markdown(
         """
 <style>
-  .tc-preview-title { font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
-  .tc-muted { color: #64748b; font-size: 0.9rem; }
+  .tc-preview-title { font-size: 1.35rem; font-weight: 800; line-height: 1.15; margin-bottom: 0.1rem; }
+  .tc-muted { color: #94a3b8; font-size: 0.92rem; margin-bottom: 0.5rem; }
+  .tc-aa-kicker {
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+  }
+  .tc-aa-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 0.2rem;
+  }
+  .tc-aa-subtitle { color: #94a3b8; font-size: 0.86rem; margin-bottom: 0.45rem; }
+  .tc-aa-summary {
+    color: inherit;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    margin-top: 0.5rem;
+  }
+  .tc-chip-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.45rem 0 0.5rem 0; }
+  .tc-chip {
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    border-radius: 999px;
+    color: #cbd5e1;
+    display: inline-block;
+    font-size: 0.72rem;
+    line-height: 1;
+    padding: 0.34rem 0.55rem;
+    background: rgba(148, 163, 184, 0.10);
+  }
+  .tc-stat-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.35rem; }
+  .tc-stat-pill {
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 0.55rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(148, 163, 184, 0.07);
+  }
+  .tc-stat-label { color: #94a3b8; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+  .tc-stat-value { font-size: 0.82rem; font-weight: 800; margin-top: 0.08rem; }
+  .tc-aa-empty { color: #94a3b8; font-size: 0.86rem; }
   /* Primary buttons → red (selected template, selected track, Retrieve) */
   button[data-testid="baseButton-primary"],
   div[data-testid="stButton"] > button[kind="primary"],
@@ -88,6 +131,23 @@ def _inject_styles() -> None:
 @st.cache_resource(show_spinner=False)
 def _cached_matrices():
     return load_embedding_matrices()
+
+
+@st.cache_data(show_spinner=False)
+def _cached_aa_song_index() -> dict[str, dict[str, Any]]:
+    path = Path(
+        os.environ.get(
+            "GEN4REC_MUSIC4ALL_AA_INDEX_PATH",
+            str(PROJECT_ROOT / "data" / "derived" / "music4all_aa_song_index.parquet"),
+        )
+    )
+    if not path.is_file():
+        return {}
+    df = pd.read_parquet(path)
+    if "song_id" not in df.columns:
+        return {}
+    df = df.astype(object).where(pd.notna(df), None)
+    return {str(row["song_id"]): row for row in df.to_dict("records") if row.get("song_id")}
 
 
 def _song_artist(hit: dict) -> tuple[str, str]:
@@ -116,6 +176,65 @@ def _truncate(s: str, max_len: int) -> str:
 
 def _h(s: str) -> str:
     return html.escape(s, quote=True)
+
+
+def _aa_field(row: dict[str, Any] | None, key: str) -> str:
+    if not row:
+        return ""
+    value = row.get(key)
+    if value is None or pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _aa_has_any(row: dict[str, Any] | None, keys: tuple[str, ...]) -> bool:
+    return any(_aa_field(row, key) for key in keys)
+
+
+def _aa_pipe_values(row: dict[str, Any] | None, key: str, *, limit: int = 8) -> list[str]:
+    raw = _aa_field(row, key)
+    if not raw:
+        return []
+    return [part.strip() for part in raw.split("|") if part.strip()][:limit]
+
+
+def _compact_text(value: str, max_len: int = 360) -> str:
+    value = " ".join(value.split())
+    if len(value) <= max_len:
+        return value
+    return value[: max_len - 1].rstrip() + "…"
+
+
+def _chip_html(values: list[str]) -> str:
+    if not values:
+        return ""
+    chips = "".join(f'<span class="tc-chip">{_h(value)}</span>' for value in values)
+    return f'<div class="tc-chip-row">{chips}</div>'
+
+
+def _stat_pills(items: list[tuple[str, str]]) -> str:
+    visible = [(label, value) for label, value in items if value]
+    if not visible:
+        return ""
+    pills = "".join(
+        (
+            '<div class="tc-stat-pill">'
+            f'<div class="tc-stat-label">{_h(label)}</div>'
+            f'<div class="tc-stat-value">{_h(value)}</div>'
+            "</div>"
+        )
+        for label, value in visible
+    )
+    return f'<div class="tc-stat-row">{pills}</div>'
+
+
+def _count_label(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        return f"{int(float(value)):,}"
+    except (TypeError, ValueError):
+        return value
 
 
 def _meta_value_present(v: Any) -> bool:
@@ -213,6 +332,80 @@ def _render_metadata_block_inner(meta: dict[str, Any], hit: dict) -> None:
             st.metric(lab, _fmt_feature(key, meta.get(key)))
 
 
+def _render_aa_context(enrichment: dict[str, Any] | None) -> None:
+    album_present = _aa_has_any(enrichment, ("album_name", "album_cover_url", "album_summary"))
+    artist_present = _aa_has_any(enrichment, ("artist_name", "artist_image_url", "artist_summary"))
+    if not album_present and not artist_present:
+        return
+
+    st.divider()
+    st.markdown("##### Album / Artist context")
+    try:
+        shell = st.container(border=True)
+    except TypeError:
+        shell = st.container()
+
+    with shell:
+        cover_url = _aa_field(enrichment, "album_cover_url") or _aa_field(enrichment, "artist_image_url")
+        left, right = st.columns([0.9, 1.6], gap="medium")
+        with left:
+            if cover_url:
+                st.image(cover_url, use_container_width=True)
+            else:
+                st.markdown('<p class="tc-aa-empty">No A+A image URL.</p>', unsafe_allow_html=True)
+        with right:
+            album_name = _aa_field(enrichment, "album_name")
+            album_artist = _aa_field(enrichment, "album_artist")
+            release_date = _aa_field(enrichment, "album_release_date")
+            st.markdown('<div class="tc-aa-kicker">Music4All A+A</div>', unsafe_allow_html=True)
+            title = album_name or _aa_field(enrichment, "artist_name") or "Enriched music context"
+            subtitle = " · ".join(item for item in (album_artist, release_date) if item)
+            st.markdown(f'<div class="tc-aa-title">{_h(title)}</div>', unsafe_allow_html=True)
+            if subtitle:
+                st.markdown(f'<div class="tc-aa-subtitle">{_h(subtitle)}</div>', unsafe_allow_html=True)
+
+            album_genres = _aa_pipe_values(enrichment, "album_genres", limit=6)
+            if album_genres:
+                st.markdown(_chip_html(album_genres), unsafe_allow_html=True)
+
+            listeners = _count_label(_aa_field(enrichment, "album_listeners"))
+            playcount = _count_label(_aa_field(enrichment, "album_playcount"))
+            stats_html = _stat_pills(
+                [
+                    ("Listeners", listeners),
+                    ("Plays", playcount),
+                    ("Album MBID", _truncate(_aa_field(enrichment, "album_mbid"), 8)),
+                ]
+            )
+            if stats_html:
+                st.markdown(stats_html, unsafe_allow_html=True)
+
+        if artist_present:
+            with st.expander("Artist context", expanded=False):
+                artist_cols = st.columns([0.68, 1.45], gap="medium")
+                with artist_cols[0]:
+                    artist_image = _aa_field(enrichment, "artist_image_url")
+                    if artist_image:
+                        st.image(artist_image, use_container_width=True)
+                with artist_cols[1]:
+                    artist_name = _aa_field(enrichment, "artist_name")
+                    if artist_name:
+                        st.markdown(f'<div class="tc-aa-title">{_h(artist_name)}</div>', unsafe_allow_html=True)
+                    details = [
+                        _aa_field(enrichment, "artist_type"),
+                        _aa_field(enrichment, "artist_country"),
+                    ]
+                    details = [item for item in details if item]
+                    if details:
+                        st.markdown(
+                            f'<div class="tc-aa-subtitle">{_h(" · ".join(details))}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    artist_genres = _aa_pipe_values(enrichment, "artist_genres", limit=8)
+                    if artist_genres:
+                        st.markdown(_chip_html(artist_genres), unsafe_allow_html=True)
+
+
 def _render_query_templates() -> None:
     st.markdown("**Quick description templates** (optional)")
     ncols = 3
@@ -243,6 +436,7 @@ def _render_preview(hit: dict) -> None:
     meta = dict(hit.get("metadata") or {})
     missing = meta.pop("_metadata_missing", None)
     song, artist = _song_artist(hit)
+    enrichment = _cached_aa_song_index().get(str(hit.get("song_id", "")))
 
     st.markdown(f'<p class="tc-preview-title">{_h(song)}</p>', unsafe_allow_html=True)
     st.markdown(f'<p class="tc-muted">{_h(artist)}</p>', unsafe_allow_html=True)
@@ -254,6 +448,7 @@ def _render_preview(hit: dict) -> None:
     else:
         st.caption("No local MP3 (expected under music4all/audios/).")
 
+    _render_aa_context(enrichment)
     _render_metadata_block(meta, hit, missing=missing)
 
 

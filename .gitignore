@@ -8,12 +8,16 @@ music4all
 music4allOnion
 music4allA+A
 .env
+data/
 
 # Local SQLite data files
 src/data/music4all_final.sqlite
 src/data/music4all_final.sqlite-shm
 src/data/music4all_final.sqlite-wal
 src/data/music4all.db
+
+# Paper citations
+milestone/reference/
 
 # Model weights / checkpoints
 weights/
