@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
 
@@ -115,12 +116,175 @@ def get_variant_user_embeddings(embedding_variant: str) -> tuple[np.ndarray, np.
     return user_embs, user_ids
 
 
+@st.cache_data(show_spinner=False)
+def get_music4all_aa_song_index() -> dict[str, dict[str, object]]:
+    path = Path(
+        os.environ.get(
+            "GEN4REC_MUSIC4ALL_AA_INDEX_PATH",
+            str(REPO_ROOT / "data" / "derived" / "music4all_aa_song_index.parquet"),
+        )
+    )
+    if not path.is_file():
+        return {}
+    df = pd.read_parquet(path)
+    if "song_id" not in df.columns:
+        return {}
+    df = df.astype(object).where(pd.notna(df), None)
+    return {str(row["song_id"]): row for row in df.to_dict("records") if row.get("song_id")}
+
+
 def _format_metric_value(value: float | int | None) -> str:
     if value is None:
         return "N/A"
     if isinstance(value, float):
         return f"{value:.4f}"
     return str(value)
+
+
+def _aa_text(row: dict[str, object] | None, key: str) -> str:
+    if not row:
+        return ""
+    value = row.get(key)
+    if value is None or pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _normalize_label(value: object) -> str:
+    return str(value or "").strip().casefold()
+
+
+def _aa_genre_caption(row: dict[str, object] | None, key: str, *, limit: int = 3) -> str:
+    raw = _aa_text(row, key)
+    if not raw:
+        return ""
+    values = [part.strip() for part in raw.split("|") if part.strip()]
+    return ", ".join(values[:limit])
+
+
+def _render_visual_card(item: dict[str, str]) -> None:
+    try:
+        shell = st.container(border=True)
+    except TypeError:
+        shell = st.container()
+    with shell:
+        st.image(item["image_url"], use_container_width=True)
+        if item.get("kicker"):
+            st.caption(item["kicker"])
+        st.markdown(f"**{item['title']}**")
+        if item.get("subtitle"):
+            st.caption(item["subtitle"])
+        if item.get("detail"):
+            st.caption(item["detail"])
+
+
+def _render_visual_gallery(title: str, caption: str, items: list[dict[str, str]], *, columns: int = 5) -> None:
+    if not items:
+        return
+    st.markdown(f"**{title}**")
+    st.caption(caption)
+    for start in range(0, len(items), columns):
+        chunk = items[start : start + columns]
+        cols = st.columns(len(chunk), gap="small")
+        for col, item in zip(cols, chunk):
+            with col:
+                _render_visual_card(item)
+
+
+def _profile_visual_items(profile_artifacts: ProfileArtifacts, summary: dict) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    aa_index = get_music4all_aa_song_index()
+    raw = profile_artifacts.raw_profile or {}
+    songs = raw.get("songs") or []
+    if not aa_index or not songs:
+        return [], []
+
+    representative_artists = {
+        _normalize_label(name): i
+        for i, name in enumerate(summary.get("representative_artists", []))
+    }
+    representative_tracks = {
+        (_normalize_label(item.get("artist")), _normalize_label(item.get("song"))): i
+        for i, item in enumerate(summary.get("representative_tracks", []))
+        if isinstance(item, dict)
+    }
+
+    artist_candidates: dict[str, tuple[tuple[int, int], dict[str, str]]] = {}
+    album_candidates: dict[str, tuple[tuple[int, int], dict[str, str]]] = {}
+
+    for retrieval_rank, song_row in enumerate(songs):
+        song_id = str(song_row.get("song_id") or "")
+        enrichment = aa_index.get(song_id)
+        if not enrichment:
+            continue
+        info = song_row.get("info") or {}
+        track_artist = str(info.get("artist") or _aa_text(enrichment, "album_artist") or _aa_text(enrichment, "artist_name"))
+        track_title = str(info.get("song") or _aa_text(enrichment, "music4all_song") or song_id)
+
+        artist_image = _aa_text(enrichment, "artist_image_url")
+        artist_name = _aa_text(enrichment, "artist_name") or track_artist
+        if artist_image and artist_name:
+            artist_key = _aa_text(enrichment, "artist_mbid") or _normalize_label(artist_name)
+            priority = representative_artists.get(_normalize_label(artist_name), 999)
+            item = {
+                "image_url": artist_image,
+                "kicker": "Artist",
+                "title": artist_name,
+                "subtitle": " · ".join(
+                    part
+                    for part in (
+                        _aa_text(enrichment, "artist_type"),
+                        _aa_text(enrichment, "artist_country"),
+                    )
+                    if part
+                ),
+                "detail": _aa_genre_caption(enrichment, "artist_genres"),
+            }
+            score = (priority, retrieval_rank)
+            current = artist_candidates.get(artist_key)
+            if current is None or score < current[0]:
+                artist_candidates[artist_key] = (score, item)
+
+        cover_url = _aa_text(enrichment, "album_cover_url")
+        album_name = _aa_text(enrichment, "album_name") or _aa_text(enrichment, "music4all_album_name")
+        if cover_url and album_name:
+            album_key = _aa_text(enrichment, "album_mbid") or f"{_normalize_label(track_artist)}::{_normalize_label(album_name)}"
+            priority = representative_tracks.get((_normalize_label(track_artist), _normalize_label(track_title)), 999)
+            item = {
+                "image_url": cover_url,
+                "kicker": "Track",
+                "title": track_title,
+                "subtitle": track_artist,
+                "detail": f"Album: {album_name}",
+            }
+            score = (priority, retrieval_rank)
+            current = album_candidates.get(album_key)
+            if current is None or score < current[0]:
+                album_candidates[album_key] = (score, item)
+
+    artists = [item for _, item in sorted(artist_candidates.values(), key=lambda pair: pair[0])[:5]]
+    albums = [item for _, item in sorted(album_candidates.values(), key=lambda pair: pair[0])[:5]]
+    return artists, albums
+
+
+def _render_profile_visual_context(profile_artifacts: ProfileArtifacts, summary: dict) -> None:
+    artists, albums = _profile_visual_items(profile_artifacts, summary)
+    if not artists and not albums:
+        return
+
+    with st.expander("Visual listening context", expanded=True):
+        st.caption("Images are matched from Music4All A+A using the retrieved song IDs; track artwork uses album covers.")
+        if artists:
+            _render_visual_gallery(
+                "Retrieved artists",
+                "Artist images from the A+A artist metadata.",
+                artists,
+            )
+        if albums:
+            _render_visual_gallery(
+                "Retrieved tracks / album covers",
+                "Track artwork is represented by the matched album cover.",
+                albums,
+            )
 
 
 def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
@@ -130,6 +294,17 @@ def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
         st.info("No prompt artifact is available yet. Click `Load profile` to build or load it.")
         return
 
+    st.subheader("Recent listening snapshot")
+    audio_profile = summary.get("audio_profile", {})
+    metrics = st.columns(4)
+    metrics[0].metric("Danceability", audio_profile.get("danceability_mean"))
+    metrics[1].metric("Energy", audio_profile.get("energy_mean"))
+    metrics[2].metric("Valence", audio_profile.get("valence_mean"))
+    metrics[3].metric("Tempo", audio_profile.get("tempo_mean"))
+    if summary.get("mood_summary"):
+        st.caption("Mood summary: " + ", ".join(summary["mood_summary"]))
+
+    st.divider()
     st.subheader("LLM listener profile")
     st.caption(
         "This section is generated from retrieved songs in Phase 2 (metadata/tags + summary), "
@@ -173,15 +348,7 @@ def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
         else:
             st.write("None")
 
-    st.subheader("Recent listening snapshot")
-    audio_profile = summary.get("audio_profile", {})
-    metrics = st.columns(4)
-    metrics[0].metric("Danceability", audio_profile.get("danceability_mean"))
-    metrics[1].metric("Energy", audio_profile.get("energy_mean"))
-    metrics[2].metric("Valence", audio_profile.get("valence_mean"))
-    metrics[3].metric("Tempo", audio_profile.get("tempo_mean"))
-    if summary.get("mood_summary"):
-        st.caption("Mood summary: " + ", ".join(summary["mood_summary"]))
+    _render_profile_visual_context(profile_artifacts, summary)
 
     if profile_artifacts.validation:
         with st.expander("Validation summary"):
