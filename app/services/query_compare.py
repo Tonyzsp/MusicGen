@@ -32,7 +32,7 @@ from app.services.text_compare_service import (
 # Short label → full prompt text (fills the description box when clicked)
 QUERY_TEMPLATES: list[tuple[str, str]] = [
     (
-        "Piano",
+        "Soft Piano",
         "slow emotional piano ballad, intimate vocals, sparse arrangement, warm reverb",
     ),
     (
