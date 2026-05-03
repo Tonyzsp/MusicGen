@@ -8,7 +8,12 @@ music4all
 music4allOnion
 music4allA+A
 .env
-data/
+
+# Local evaluation data/audio should stay local.
+data/*
+!data/raw_for_eval/
+data/raw_for_eval/*
+!data/raw_for_eval/manifest_template.csv
 
 # Local SQLite data files
 src/data/music4all_final.sqlite
