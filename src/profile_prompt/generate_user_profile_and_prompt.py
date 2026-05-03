@@ -20,6 +20,12 @@ Requirements:
 - The profile paragraph should sound natural, specific, and musically informed.
 - The Suno prompt should be concise but vivid, and optimized for text-to-music generation.
 - Focus on genre, vocal style, instrumentation, mood, production texture, energy, and pacing.
+- If the listener summary includes `language_profile`, use it to decide whether
+  the generation should be vocal-led, instrumental, or mixed.
+- If `language_profile.dominant_mode` is "instrumental", do not invent lead
+  vocals or lyrics; describe instrumental texture, arrangement, and production.
+- If `language_profile.dominant_mode` is "vocal", include an appropriate vocal
+  direction and lyrical/song structure cues when supported by the summary.
 - Do NOT mention retrieval scores, JSON, or metadata field names.
 - Do NOT list too many song titles or artist names.
 - Do NOT ask questions.
@@ -65,6 +71,7 @@ Guidance for the Suno prompt:
 - should be directly usable as a text-to-music prompt
 - compact, vivid, and specific
 - mention likely genre blend, vocal type, instrumentation, mood, arrangement density, pacing, and production feel
+- respect the language_profile field when present: instrumental-heavy profiles should not request vocals; vocal-heavy profiles may include vocal and lyric direction
 - include a short "avoid" clause if helpful
 - do not mention user, profile, JSON, recommendation, or metadata
 

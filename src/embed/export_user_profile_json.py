@@ -52,6 +52,7 @@ class Config:
     )
     ID_GENRES_PATH = resolve_path("GEN4REC_ID_GENRES_PATH", Path(DATASET_PATH) / "id_genres.csv")
     ID_TAGS_PATH = resolve_path("GEN4REC_ID_TAGS_PATH", Path(DATASET_PATH) / "id_tags.csv")
+    ID_LANG_PATH = resolve_path("GEN4REC_ID_LANG_PATH", Path(DATASET_PATH) / "id_lang.csv")
 
 
 def ensure_local_file(path: str, description: str) -> str:
@@ -156,17 +157,20 @@ def build_export_payload(
     meta_df: pd.DataFrame,
     genres_df: pd.DataFrame,
     tags_df: pd.DataFrame,
+    lang_df: pd.DataFrame,
 ) -> dict[str, Any]:
     base = pd.DataFrame({"song_id": song_ids, "similarity_score": scores, "rank": ranks})
     info_df = info_df.rename(columns={"id": "song_id"})
     meta_df = meta_df.rename(columns={"id": "song_id"})
     genres_df = genres_df.rename(columns={"id": "song_id"})
     tags_df = tags_df.rename(columns={"id": "song_id"})
+    lang_df = lang_df.rename(columns={"id": "song_id"})
 
     merged = base.merge(info_df, on="song_id", how="left")
     merged = merged.merge(meta_df, on="song_id", how="left", suffixes=("", "_meta_dup"))
     merged = merged.merge(genres_df, on="song_id", how="left")
     merged = merged.merge(tags_df, on="song_id", how="left")
+    merged = merged.merge(lang_df, on="song_id", how="left")
 
     # Drop duplicate id columns if any suffix collision
     drop_cols = [c for c in merged.columns if c.endswith("_meta_dup")]
@@ -200,11 +204,12 @@ def build_export_payload(
             "metadata": meta_block,
             "genres": jsonable_value(row["genres"]) if "genres" in row else None,
             "tags": jsonable_value(row["tags"]) if "tags" in row else None,
+            "language": jsonable_value(row["lang"]) if "lang" in row else None,
         }
         songs_out.append(entry)
 
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "user_id": user_id,
         "top_k": top_k_returned,
         "retrieval": {
@@ -283,6 +288,7 @@ def export_user_profile_payload(
     meta_df = load_id_metadata(ensure_local_file(Config.ID_METADATA_PATH, "Song metadata table"))
     genres_df = _read_tsv_id_df(ensure_local_file(Config.ID_GENRES_PATH, "Song genre table"), "genres")
     tags_df = _read_tsv_id_df(ensure_local_file(Config.ID_TAGS_PATH, "Song tag table"), "tags")
+    lang_df = _read_tsv_id_df(ensure_local_file(Config.ID_LANG_PATH, "Song language table"), "lang")
 
     return build_export_payload(
         user_id=user_id,
@@ -299,6 +305,7 @@ def export_user_profile_payload(
         meta_df=meta_df,
         genres_df=genres_df,
         tags_df=tags_df,
+        lang_df=lang_df,
     )
 
 

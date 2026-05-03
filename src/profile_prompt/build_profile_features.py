@@ -32,6 +32,48 @@ def _top_items(counter: Counter, k: int = 8) -> List[str]:
     return [item for item, _ in counter.most_common(k)]
 
 
+def _normalize_language_label(value: Any) -> str:
+    if value is None:
+        return "unknown"
+    label = str(value).strip()
+    if not label:
+        return "unknown"
+    return label.upper() if label.lower() in {"intrumental", "instrumental"} else label.lower()
+
+
+def _is_instrumental_label(label: str) -> bool:
+    return label.lower() in {"intrumental", "instrumental"}
+
+
+def _build_language_profile(language_counter: Counter, total_songs: int) -> Dict[str, Any]:
+    instrumental_count = sum(
+        count for label, count in language_counter.items() if _is_instrumental_label(label)
+    )
+    unknown_count = language_counter.get("unknown", 0)
+    vocal_or_language_count = max(0, total_songs - instrumental_count - unknown_count)
+    instrumental_ratio = round(instrumental_count / total_songs, 3) if total_songs else 0.0
+    vocal_or_language_ratio = round(vocal_or_language_count / total_songs, 3) if total_songs else 0.0
+
+    if total_songs == 0:
+        dominant_mode = "unknown"
+    elif instrumental_ratio >= 0.6:
+        dominant_mode = "instrumental"
+    elif vocal_or_language_ratio >= 0.6:
+        dominant_mode = "vocal"
+    else:
+        dominant_mode = "mixed"
+
+    return {
+        "language_counts": dict(language_counter.most_common()),
+        "instrumental_count": instrumental_count,
+        "vocal_or_language_count": vocal_or_language_count,
+        "unknown_count": unknown_count,
+        "instrumental_ratio": instrumental_ratio,
+        "vocal_or_language_ratio": vocal_or_language_ratio,
+        "dominant_mode": dominant_mode,
+    }
+
+
 def _build_mood_summary(
     energy_mean: float | None,
     valence_mean: float | None,
@@ -85,11 +127,18 @@ def _build_rule_based_profile(summary: Dict[str, Any]) -> str:
     tag_text = ", ".join(top_tags) if top_tags else "emotionally nuanced textures"
     mood_text = ", ".join(moods) if moods else "reflective and intimate moods"
     artist_text = ", ".join(artists) if artists else "similar singer-songwriters"
+    language_profile = summary.get("language_profile", {})
+    dominant_mode = language_profile.get("dominant_mode")
+    arrangement_focus = (
+        "instrumental textures and restrained arrangements"
+        if dominant_mode == "instrumental"
+        else "expressive vocals and restrained arrangements"
+    )
 
     return (
         f"This listener gravitates toward {genre_text}, with recurring traits such as "
         f"{tag_text}. Their retrieved songs suggest a preference for {mood_text}, often "
-        f"centered on expressive vocals and restrained arrangements. Representative artists "
+        f"centered on {arrangement_focus}. Representative artists "
         f"include {artist_text}, pointing to a taste for emotionally detailed, intimate music."
     )
 
@@ -103,6 +152,7 @@ def build_profile_features(profile_json: Dict[str, Any]) -> Dict[str, Any]:
     genre_counter: Counter = Counter()
     tag_counter: Counter = Counter()
     artist_counter: Counter = Counter()
+    language_counter: Counter = Counter()
 
     danceability_vals: List[float] = []
     energy_vals: List[float] = []
@@ -126,6 +176,8 @@ def build_profile_features(profile_json: Dict[str, Any]) -> Dict[str, Any]:
 
         for tag in _split_csv_like_field(song.get("tags")):
             tag_counter[tag] += 1
+
+        language_counter[_normalize_language_label(song.get("language"))] += 1
 
         if artist and title and len(representative_tracks) < 5:
             representative_tracks.append({
@@ -157,6 +209,7 @@ def build_profile_features(profile_json: Dict[str, Any]) -> Dict[str, Any]:
         "top_tags": _top_items(tag_counter, 10),
         "representative_artists": _top_items(artist_counter, 6),
         "representative_tracks": representative_tracks,
+        "language_profile": _build_language_profile(language_counter, len(songs)),
         "audio_profile": audio_profile,
         "mood_summary": _build_mood_summary(
             energy_mean=audio_profile["energy_mean"],

@@ -22,6 +22,7 @@ class SunoGenerator:
     """Generate and download Suno tracks via the ACE Data API."""
 
     provider_name = "suno"
+    instrumental_threshold = 0.6
 
     def __init__(self, model: str = "chirp-v4-5", client: AceSunoApiClient | None = None) -> None:
         self.model = model
@@ -40,21 +41,55 @@ class SunoGenerator:
         slug = re.sub(r"[^A-Za-z0-9]+", "_", raw).strip("_").lower()
         return slug or fallback
 
+    def _infer_generation_mode(self, spec: GenerationSpec) -> tuple[str, dict[str, Any]]:
+        """Choose Suno vocal/instrumental controls from grounded profile data."""
+        if spec.lyrics.strip():
+            return "provided_lyrics", {"reason": "lyrics_file"}
+
+        language_profile = dict((spec.input_summary or {}).get("language_profile") or {})
+        dominant_mode = str(language_profile.get("dominant_mode", "")).lower()
+        instrumental_ratio = float(language_profile.get("instrumental_ratio") or 0.0)
+
+        if dominant_mode == "instrumental" or instrumental_ratio >= self.instrumental_threshold:
+            return "instrumental", {
+                "reason": "language_profile",
+                "dominant_mode": dominant_mode,
+                "instrumental_ratio": instrumental_ratio,
+            }
+
+        return "auto_lyrics_vocal", {
+            "reason": "language_profile" if language_profile else "default_vocal",
+            "dominant_mode": dominant_mode or None,
+            "instrumental_ratio": instrumental_ratio if language_profile else None,
+        }
+
+    def _build_lyric_prompt(self, spec: GenerationSpec) -> str:
+        parts = [
+            "Write original lyrics for this generated song.",
+            f"Music direction: {spec.generation_prompt.strip()}",
+        ]
+        if spec.profile_paragraph.strip():
+            parts.append(f"Listener profile: {spec.profile_paragraph.strip()}")
+        return "\n".join(parts)
+
     def generate(self, spec: GenerationSpec, output_dir: Path) -> GenerationResult:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         prompt_text = spec.generation_prompt.strip()
-        lyric_prompt = spec.profile_paragraph.strip()
         lyric = spec.lyrics.strip()
         style = self._build_style(spec)
+        generation_mode, generation_mode_details = self._infer_generation_mode(spec)
+        custom = generation_mode in {"provided_lyrics", "auto_lyrics_vocal"}
+        instrumental = generation_mode == "instrumental"
+        lyric_prompt = "" if lyric or instrumental else self._build_lyric_prompt(spec)
 
         response_json = self.client.generate_music(
             prompt=prompt_text,
             model=self.model,
             lyric_prompt=lyric_prompt,
             lyric=lyric,
-            custom=bool(lyric),
-            instrumental=not bool(lyric),
+            custom=custom,
+            instrumental=instrumental,
             title=f"{spec.user_id}_rec_song",
             style=style,
             style_negative=spec.negative_prompt or "",
@@ -108,8 +143,12 @@ class SunoGenerator:
                 "model": self.model,
                 "user_id": spec.user_id,
                 "style": style,
-                "custom": bool(lyric),
-                "instrumental": not bool(lyric),
+                "custom": custom,
+                "instrumental": instrumental,
+                "generation_mode": generation_mode,
+                "generation_mode_details": generation_mode_details,
+                "lyric_prompt_used": bool(lyric_prompt),
+                "provided_lyrics": bool(lyric),
             },
             response_metadata=response_metadata,
             samples=samples,

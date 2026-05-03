@@ -145,6 +145,23 @@ def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
         st.write(", ".join(summary.get("top_genres", [])) or "None")
         st.markdown("**Top tags**")
         st.write(", ".join(summary.get("top_tags", [])) or "None")
+        language_profile = summary.get("language_profile", {})
+        if language_profile:
+            st.markdown("**Language / vocal mode**")
+            dominant_mode = language_profile.get("dominant_mode", "unknown")
+            instrumental_ratio = language_profile.get("instrumental_ratio")
+            vocal_ratio = language_profile.get("vocal_or_language_ratio")
+            st.write(
+                f"Dominant mode: `{dominant_mode}` | "
+                f"Instrumental ratio: {_format_metric_value(instrumental_ratio)} | "
+                f"Vocal/language ratio: {_format_metric_value(vocal_ratio)}"
+            )
+            language_counts = language_profile.get("language_counts", {})
+            if language_counts:
+                counts_preview = ", ".join(
+                    f"{label}: {count}" for label, count in list(language_counts.items())[:6]
+                )
+                st.caption("Language counts: " + counts_preview)
     with right:
         st.markdown("**Representative artists**")
         st.write(", ".join(summary.get("representative_artists", [])) or "None")
