@@ -29,6 +29,10 @@ Requirements:
 - Do NOT mention retrieval scores, JSON, or metadata field names.
 - Do NOT list too many song titles or artist names.
 - Do NOT ask questions.
+- If mentioning artists, phrase them softly as possible taste references, not as direct evidence.
+- Avoid analytical phrases like "the presence of artists like..." or "artists such as X suggest...".
+- Prefer wording such as "the listener might enjoy artists such as..." or "they may be drawn to voices and arrangements associated with...".
+- Artist names should support the profile naturally, but the main focus should remain on genre, mood, instrumentation, and production style.
 - Avoid saying "similar to [artist]" or asking the model to imitate a copyrighted artist.
 - Avoid overly generic wording like "nice song" or "good vibes".
 - The Suno prompt should feel like a production brief.
