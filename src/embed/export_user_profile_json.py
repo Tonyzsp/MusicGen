@@ -13,6 +13,14 @@ import os
 from pathlib import Path
 from typing import Any
 
+# Avoid FAISS/OpenMP aborts in conda macOS environments with duplicate libomp runtimes.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
+try:
+    import faiss
+except ImportError:
+    faiss = None
+
 import numpy as np
 import pandas as pd
 
@@ -40,6 +48,10 @@ class Config:
     )
     SONG_EMB_PATH = resolve_path("GEN4REC_SONG_EMB_PATH", Path(EMBEDDINGS_DIR) / "music4all_embeddings.npy")
     SONG_IDS_PATH = resolve_path("GEN4REC_SONG_IDS_PATH", Path(EMBEDDINGS_DIR) / "music4all_ids.npy")
+    SONG_FAISS_INDEX_PATH = resolve_path(
+        "GEN4REC_SONG_FAISS_INDEX_PATH",
+        REPO_ROOT_PATH / "weights" / "clap" / "music4all_faiss.index",
+    )
     USER_EMB_PATH = os.environ.get("GEN4REC_USER_EMB_PATH")
     USER_IDS_PATH = os.environ.get("GEN4REC_USER_IDS_PATH")
     ID_INFORMATION_PATH = resolve_path(
@@ -146,6 +158,7 @@ def build_export_payload(
     user_id: str,
     top_k_requested: int,
     top_k_returned: int,
+    retrieval_backend: str,
     min_similarity: float | None,
     threshold_relaxed: bool,
     candidate_count_before_filter: int,
@@ -209,10 +222,11 @@ def build_export_payload(
         songs_out.append(entry)
 
     return {
-        "schema_version": "1.2",
+        "schema_version": "1.3",
         "user_id": user_id,
         "top_k": top_k_returned,
         "retrieval": {
+            "backend": retrieval_backend,
             "space": "clap_embedding_cosine",
             "note": "similarity_score is dot product on L2-normalized 512-d vectors (equals cosine similarity).",
             "top_k_requested": top_k_requested,
@@ -225,6 +239,113 @@ def build_export_payload(
     }
 
 
+def _resolve_listened_indices(user_id: str, song_ids_arr: np.ndarray, exclude_recent: bool) -> set[int]:
+    if not exclude_recent:
+        return set()
+
+    history = load_listening_history(ensure_local_file(Config.LISTENING_HISTORY_PATH, "Listening history table"))
+    listened = set(history.loc[history["user_id"] == user_id, "song_id"].astype(str).tolist())
+    if not listened:
+        return set()
+
+    song_to_idx = {sid: i for i, sid in enumerate(song_ids_arr)}
+    return {song_to_idx[sid] for sid in listened if sid in song_to_idx}
+
+
+def _rank_with_faiss(
+    *,
+    user_vec: np.ndarray,
+    song_count: int,
+    top_k: int,
+    min_similarity: float | None,
+    listened_idxs: set[int],
+) -> tuple[np.ndarray, np.ndarray, int, int, bool] | None:
+    if faiss is None or not os.path.exists(Config.SONG_FAISS_INDEX_PATH):
+        return None
+
+    index = faiss.read_index(Config.SONG_FAISS_INDEX_PATH)
+    if index.ntotal != song_count:
+        raise ValueError(
+            f"FAISS index size mismatch: index has {index.ntotal} rows but song_ids has {song_count}."
+        )
+    if index.d != int(user_vec.shape[0]):
+        raise ValueError(
+            f"FAISS index dim mismatch: index dim={index.d}, user vector dim={user_vec.shape[0]}."
+        )
+
+    candidate_count_before_filter = song_count - len(listened_idxs)
+    search_k = song_count if min_similarity is not None else min(
+        song_count,
+        max(top_k + len(listened_idxs), top_k),
+    )
+    distances, indices = index.search(user_vec.astype(np.float32).reshape(1, -1), search_k)
+
+    rows: list[tuple[int, float]] = []
+    for idx, score in zip(indices[0].tolist(), distances[0].tolist()):
+        if idx < 0 or idx in listened_idxs:
+            continue
+        if min_similarity is not None and float(score) < float(min_similarity):
+            continue
+        rows.append((int(idx), float(score)))
+
+    threshold_relaxed = False
+    if min_similarity is not None:
+        candidate_count_after_filter = len(rows)
+        if candidate_count_after_filter == 0:
+            threshold_relaxed = True
+            rows = [
+                (int(idx), float(score))
+                for idx, score in zip(indices[0].tolist(), distances[0].tolist())
+                if idx >= 0 and idx not in listened_idxs
+            ]
+            candidate_count_after_filter = candidate_count_before_filter
+    else:
+        candidate_count_after_filter = candidate_count_before_filter
+
+    selected = rows[: max(1, top_k)]
+    if not selected:
+        raise ValueError("No FAISS retrieval candidates were available after filtering.")
+
+    idx = np.array([row[0] for row in selected], dtype=np.int64)
+    scores = np.array([row[1] for row in selected], dtype=np.float64)
+    return idx, scores, candidate_count_before_filter, candidate_count_after_filter, threshold_relaxed
+
+
+def _rank_with_numpy(
+    *,
+    user_vec: np.ndarray,
+    song_ids_arr: np.ndarray,
+    top_k: int,
+    min_similarity: float | None,
+    listened_idxs: set[int],
+) -> tuple[np.ndarray, np.ndarray, int, int, bool]:
+    song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
+    scores_for_rank = song_embs @ user_vec
+
+    if listened_idxs:
+        scores_for_rank = scores_for_rank.copy()
+        scores_for_rank[np.array(sorted(listened_idxs), dtype=np.int64)] = -1e9
+
+    threshold_relaxed = False
+    candidate_count_before_filter = int(np.sum(scores_for_rank > -1e8))
+    if min_similarity is not None:
+        valid_mask = (scores_for_rank > -1e8) & (scores_for_rank >= float(min_similarity))
+        candidate_count_after_filter = int(np.sum(valid_mask))
+        if candidate_count_after_filter > 0:
+            scores_for_rank = np.where(valid_mask, scores_for_rank, -1e9)
+        else:
+            threshold_relaxed = True
+            candidate_count_after_filter = candidate_count_before_filter
+    else:
+        candidate_count_after_filter = candidate_count_before_filter
+
+    k_eff = min(top_k, max(1, candidate_count_after_filter))
+    idx = np.argpartition(-scores_for_rank, k_eff - 1)[:k_eff]
+    idx = idx[np.argsort(-scores_for_rank[idx])]
+    scores = scores_for_rank[idx].astype(np.float64)
+    return idx, scores, candidate_count_before_filter, candidate_count_after_filter, threshold_relaxed
+
+
 def export_user_profile_payload(
     *,
     user_id: str,
@@ -234,7 +355,6 @@ def export_user_profile_payload(
     user_ids_path: str | None = None,
     exclude_recent: bool = False,
 ) -> dict[str, Any]:
-    song_embs = np.load(ensure_local_file(Config.SONG_EMB_PATH, "Song embedding matrix")).astype(np.float32)
     song_ids_arr = np.load(ensure_local_file(Config.SONG_IDS_PATH, "Song ID array"), allow_pickle=True).astype(str)
     resolved_user_emb_path = user_emb_path or Config.USER_EMB_PATH
     resolved_user_ids_path = user_ids_path or Config.USER_IDS_PATH
@@ -251,36 +371,28 @@ def export_user_profile_payload(
         raise ValueError(f"user_id not found: {user_id}")
     user_vec = user_embs[user_to_idx[user_id]]
 
-    scores = song_embs @ user_vec
-    scores_for_rank = scores.copy()
-
-    if exclude_recent:
-        history = load_listening_history(ensure_local_file(Config.LISTENING_HISTORY_PATH, "Listening history table"))
-        listened = set(history.loc[history["user_id"] == user_id, "song_id"].astype(str).tolist())
-        if listened:
-            song_to_idx = {sid: i for i, sid in enumerate(song_ids_arr)}
-            listened_idxs = [song_to_idx[sid] for sid in listened if sid in song_to_idx]
-            scores_for_rank = scores_for_rank.copy()
-            scores_for_rank[np.array(listened_idxs, dtype=np.int64)] = -1e9
-
-    threshold_relaxed = False
-    candidate_count_before_filter = int(np.sum(scores_for_rank > -1e8))
-    if min_similarity is not None:
-        valid_mask = (scores_for_rank > -1e8) & (scores_for_rank >= float(min_similarity))
-        candidate_count_after_filter = int(np.sum(valid_mask))
-        if candidate_count_after_filter > 0:
-            scores_for_rank = np.where(valid_mask, scores_for_rank, -1e9)
-        else:
-            threshold_relaxed = True
-            candidate_count_after_filter = candidate_count_before_filter
-    else:
-        candidate_count_after_filter = candidate_count_before_filter
-
     k = max(1, top_k)
-    k_eff = min(k, max(1, candidate_count_after_filter))
-    idx = np.argpartition(-scores_for_rank, k_eff - 1)[:k_eff]
-    idx = idx[np.argsort(-scores_for_rank[idx])]
-    sel_scores = scores_for_rank[idx].astype(np.float64)
+    listened_idxs = _resolve_listened_indices(user_id, song_ids_arr, exclude_recent)
+    rank_result = _rank_with_faiss(
+        user_vec=user_vec,
+        song_count=len(song_ids_arr),
+        top_k=k,
+        min_similarity=min_similarity,
+        listened_idxs=listened_idxs,
+    )
+    retrieval_backend = "faiss"
+    if rank_result is None:
+        retrieval_backend = "numpy"
+        rank_result = _rank_with_numpy(
+            user_vec=user_vec,
+            song_ids_arr=song_ids_arr,
+            top_k=k,
+            min_similarity=min_similarity,
+            listened_idxs=listened_idxs,
+        )
+
+    idx, sel_scores, candidate_count_before_filter, candidate_count_after_filter, threshold_relaxed = rank_result
+    k_eff = len(idx)
     sel_song_ids = song_ids_arr[idx]
     ranks = np.arange(1, len(idx) + 1)
 
@@ -294,6 +406,7 @@ def export_user_profile_payload(
         user_id=user_id,
         top_k_requested=k,
         top_k_returned=int(k_eff),
+        retrieval_backend=retrieval_backend,
         min_similarity=min_similarity,
         threshold_relaxed=threshold_relaxed,
         candidate_count_before_filter=candidate_count_before_filter,

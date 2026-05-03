@@ -257,6 +257,4 @@ Then open **View section** -> **Query Compare (Base vs Finetuned)**.
 
 ## Citation
 
-If you use the Music4All dataset, please cite:
-
 Santana, I. A. P., Pinhelli, F., Donini, J., Catharin, L., Mangolin, R. B., da Costa, Y. M. G., Feltrim, V. D., & Domingues, M. A. (2020). *Music4All: A New Music Database and its Applications*. In *Proceedings of the 27th International Conference on Systems, Signals and Image Processing (IWSSIP 2020)* (pp. 1-6). Niterói, Brazil.
