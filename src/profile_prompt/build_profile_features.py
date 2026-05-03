@@ -137,9 +137,9 @@ def _build_rule_based_profile(summary: Dict[str, Any]) -> str:
 
     return (
         f"This listener gravitates toward {genre_text}, with recurring traits such as "
-        f"{tag_text}. Their retrieved songs suggest a preference for {mood_text}, often "
-        f"centered on {arrangement_focus}. Representative artists "
-        f"include {artist_text}, pointing to a taste for emotionally detailed, intimate music."
+        f"{tag_text}. Their taste leans toward {mood_text}, often centered on "
+        f"{arrangement_focus}. The listener might enjoy artists such as {artist_text}, "
+        f"while their broader preference reflects emotionally detailed, intimate music."   
     )
 
 
