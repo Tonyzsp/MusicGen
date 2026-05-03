@@ -69,6 +69,9 @@ Guidance for the profile paragraph:
 - 90 to 140 words
 - sound polished, natural, and specific
 - describe likely taste in genre, emotional tone, instrumentation, and overall aesthetic
+- If artist names are mentioned, use soft preference language, such as "the listener might enjoy..." or "they may be drawn to..."
+- Do not write artist names as proof or evidence, such as "the presence of artists like X suggests..."
+- Keep artist references secondary; emphasize broader musical taste instead
 
 Guidance for the Suno prompt:
 - must be no more than 500 characters total, including spaces and punctuation
