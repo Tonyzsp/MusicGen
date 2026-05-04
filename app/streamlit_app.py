@@ -201,43 +201,116 @@ def _inject_profile_visual_styles() -> None:
     st.markdown(
         """
 <style>
-  .aa-profile-chip-row {
+  .aa-profile-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
+    height: 100%;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.22rem;
-    margin-top: 0.30rem;
+    flex-direction: column;
   }
-  .aa-profile-chip {
-    border: 1px solid rgba(148, 163, 184, 0.30);
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.10);
-    color: #dbeafe !important;
-    display: inline-block;
-    font-size: 0.66rem;
-    line-height: 1;
-    padding: 0.25rem 0.42rem;
-    text-decoration: none !important;
+  .aa-profile-card-body {
+    padding: 0.55rem 0.7rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    flex: 1 1 auto;
   }
-  .aa-profile-chip:hover {
-    border-color: rgba(96, 165, 250, 0.70);
-    background: rgba(59, 130, 246, 0.22);
-    color: #ffffff !important;
+  .aa-profile-visual-thumb {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: #f1f5f9;
+    flex-shrink: 0;
+  }
+  .aa-profile-visual-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+  .aa-profile-kicker {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin: 0 0 0.1rem 0;
+  }
+  .aa-profile-title-row {
+    margin: 0;
+    line-height: 1.28;
+  }
+  .aa-profile-title-text {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: #0f172a;
   }
   .aa-profile-title-link {
-    color: inherit !important;
+    color: #0f172a !important;
     text-decoration: none !important;
   }
   .aa-profile-title-link:hover {
-    color: #dbeafe !important;
+    color: #2563eb !important;
     text-decoration: underline !important;
   }
-  .aa-profile-detail-link {
-    color: #cbd5e1 !important;
+  .aa-profile-subtitle {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #475569;
+    margin: 0.18rem 0 0 0;
+    line-height: 1.35;
+  }
+  .aa-profile-album-line {
+    margin: 0.35rem 0 0.15rem 0;
+    padding: 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+  .aa-profile-album-label {
+    font-weight: 700;
+    color: #64748b;
+    margin-right: 0.28rem;
+  }
+  .aa-profile-album-link {
+    color: #1d4ed8 !important;
+    font-weight: 600;
     text-decoration: none !important;
   }
-  .aa-profile-detail-link:hover {
-    color: #ffffff !important;
+  .aa-profile-album-link:hover {
+    color: #1e3a8a !important;
     text-decoration: underline !important;
+  }
+  .aa-profile-album-plain {
+    color: #334155;
+    font-weight: 600;
+  }
+  .aa-profile-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.38rem;
+    margin-top: auto;
+    padding-top: 0.45rem;
+  }
+  .aa-profile-chip {
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #0f172a !important;
+    display: inline-block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding: 0.38rem 0.62rem;
+    text-decoration: none !important;
+  }
+  .aa-profile-chip:hover {
+    border-color: #2563eb;
+    background: #e0e7ff;
+    color: #0f172a !important;
   }
 </style>
 """,
@@ -246,32 +319,41 @@ def _inject_profile_visual_styles() -> None:
 
 
 def _render_visual_card(item: dict[str, str]) -> None:
-    try:
-        shell = st.container(border=True)
-    except TypeError:
-        shell = st.container()
-    with shell:
-        st.image(item["image_url"], use_container_width=True)
-        if item.get("kicker"):
-            st.caption(item["kicker"])
-        if item.get("url"):
-            st.markdown(
-                (
-                    f'<strong><a class="aa-profile-title-link" href="{_html_escape(item["url"])}" '
-                    f'target="_blank" rel="noopener noreferrer">{_html_escape(item["title"])}</a></strong>'
-                ),
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(f"**{item['title']}**")
-        if item.get("subtitle"):
-            st.caption(item["subtitle"])
-        if item.get("detail_html"):
-            st.markdown(item["detail_html"], unsafe_allow_html=True)
-        if item.get("detail"):
-            st.caption(item["detail"])
-        if item.get("detail_md"):
-            st.markdown(item["detail_md"], unsafe_allow_html=True)
+    img_url = _html_escape(item["image_url"])
+    kicker = _html_escape(item.get("kicker") or "")
+    title_esc = _html_escape(item["title"])
+    if item.get("url"):
+        title_block = (
+            f'<strong class="aa-profile-title-text"><a class="aa-profile-title-link" '
+            f'href="{_html_escape(item["url"])}" target="_blank" rel="noopener noreferrer">'
+            f"{title_esc}</a></strong>"
+        )
+    else:
+        title_block = f'<strong class="aa-profile-title-text">{title_esc}</strong>'
+    subtitle_html = ""
+    if item.get("subtitle"):
+        subtitle_html = f'<div class="aa-profile-subtitle">{_html_escape(item["subtitle"])}</div>'
+    album_html = ""
+    if item.get("detail_html"):
+        album_html = item["detail_html"]
+    elif item.get("detail"):
+        album_html = (
+            f'<p class="aa-profile-album-line"><span class="aa-profile-album-label">Album</span> '
+            f'<span class="aa-profile-album-plain">{_html_escape(item["detail"])}</span></p>'
+        )
+    chips_html = item.get("detail_md") or ""
+    st.markdown(
+        (
+            f'<div class="aa-profile-card">'
+            f'<div class="aa-profile-visual-thumb"><img src="{img_url}" alt="" loading="lazy" /></div>'
+            f'<div class="aa-profile-card-body">'
+            f'<div class="aa-profile-kicker">{kicker}</div>'
+            f'<div class="aa-profile-title-row">{title_block}</div>'
+            f"{subtitle_html}{album_html}{chips_html}"
+            f"</div></div>"
+        ),
+        unsafe_allow_html=True,
+    )
 
 
 def _render_visual_gallery(title: str, caption: str, items: list[dict[str, str]], *, columns: int = 5) -> None:
@@ -352,13 +434,16 @@ def _profile_visual_items(profile_artifacts: ProfileArtifacts, summary: dict) ->
                 "title": track_title,
                 "subtitle": track_artist,
                 "detail_html": (
-                    f'<span style="font-size: 0.85rem; color: #94a3b8;">Album: '
-                    f'<a class="aa-profile-detail-link" href="{_html_escape(_aa_text(enrichment, "album_lastfm_url"))}" '
-                    f'target="_blank" rel="noopener noreferrer">{_html_escape(album_name)}</a></span>'
+                    f'<p class="aa-profile-album-line"><span class="aa-profile-album-label">Album</span> '
+                    f'<a class="aa-profile-album-link" href="{_html_escape(_aa_text(enrichment, "album_lastfm_url"))}" '
+                    f'target="_blank" rel="noopener noreferrer">{_html_escape(album_name)}</a></p>'
                     if _aa_text(enrichment, "album_lastfm_url")
-                    else ""
+                    else (
+                        f'<p class="aa-profile-album-line"><span class="aa-profile-album-label">Album</span> '
+                        f'<span class="aa-profile-album-plain">{_html_escape(album_name)}</span></p>'
+                    )
                 ),
-                "detail": "" if _aa_text(enrichment, "album_lastfm_url") else f"Album: {album_name}",
+                "detail": "",
                 "detail_md": _linked_tag_chips(_aa_text(enrichment, "album_genres")),
             }
             score = (priority, retrieval_rank)
