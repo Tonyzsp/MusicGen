@@ -1,11 +1,11 @@
 """
-Export materials for a lightweight human preference test on text-to-music retrieval.
+Run Phase 1 evaluation export: human preference test on text-to-music retrieval.
 
 For each prompt: top-k from base CLAP and top-k from fine-tuned CLAP, shuffle four clips,
 copy MP3s with blind filenames, and write a researcher-only manifest.
 
 Usage (from repo root):
-  python scripts/export_human_retrieval_eval.py --out-dir outputs/human_retrieval_eval
+  python scripts/run_phase1_eval.py --out-dir outputs/phase1_eval
 
 Requires: Music4All audio files and zeroshot / finetuned song embedding matrices (same as Streamlit retrieval).
 """
@@ -134,7 +134,7 @@ def main() -> None:
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=REPO_ROOT / "outputs" / "human_retrieval_eval",
+        default=REPO_ROOT / "outputs" / "phase1_eval",
         help="Output directory (creates audio/ and writes manifest).",
     )
     parser.add_argument(
