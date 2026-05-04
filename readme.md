@@ -243,16 +243,6 @@ streamlit run app/streamlit_app.py
 
 Note: Music4All A+A text summaries are masked for research use (`<Person>`, `<Genre>`), so the frontend currently uses only structured fields and images by default.
 
-## Streamlit Query Comparison
-
-The query comparison page is now integrated in the main app:
-
-```bash
-streamlit run app/streamlit_app.py
-```
-
-Then open **View section** -> **Query Compare (Base vs Finetuned)**.
-
 ---
 
 ## Citation
