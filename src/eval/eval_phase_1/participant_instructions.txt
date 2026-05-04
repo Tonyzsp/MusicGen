@@ -1,0 +1,88 @@
+Human preference evaluation: text-to-music retrieval
+
+For each item below, read the text description, then listen to the four audio clips
+(clip01–clip04 in the audio folder for that prompt id). Rank the clips from best to worst
+match to the description (paper form or survey). Clip order is randomized and is not
+informative about which model produced which retrieval.
+
+--- p01 Rainy Night ---
+slow emotional music for walking alone on a rainy night, gentle piano, quiet, lonely, and reflective
+Clips: p01_clip01.mp3, p01_clip02.mp3, p01_clip03.mp3, p01_clip04.mp3
+
+--- p02 Morning Coffee ---
+relaxing acoustic guitar music for drinking coffee in the morning, warm, calm, and comfortable
+Clips: p02_clip01.mp3, p02_clip02.mp3, p02_clip03.mp3, p02_clip04.mp3
+
+--- p03 Workout Energy ---
+fast high-energy music for working out, powerful, motivating, and intense
+Clips: p03_clip01.mp3, p03_clip02.mp3, p03_clip03.mp3, p03_clip04.mp3
+
+--- p04 Beach Sunset ---
+laid-back summer music for watching the beach sunset, relaxed, sunny, and peaceful
+Clips: p04_clip01.mp3, p04_clip02.mp3, p04_clip03.mp3, p04_clip04.mp3
+
+--- p05 City Drive ---
+cool pop or R&B music for driving through the city at night, stylish, smooth, and confident
+Clips: p05_clip01.mp3, p05_clip02.mp3, p05_clip03.mp3, p05_clip04.mp3
+
+--- p06 Happy Party ---
+fun dance music for a small party with friends, cheerful, catchy, and easy to move to
+Clips: p06_clip01.mp3, p06_clip02.mp3, p06_clip03.mp3, p06_clip04.mp3
+
+--- p07 Study Focus ---
+calm background music for studying, steady, relaxing, and not distracting
+Clips: p07_clip01.mp3, p07_clip02.mp3, p07_clip03.mp3, p07_clip04.mp3
+
+--- p08 Romantic Dinner ---
+smooth romantic dinner music with soft saxophone, warm, intimate, relaxing, and elegant
+Clips: p08_clip01.mp3, p08_clip02.mp3, p08_clip03.mp3, p08_clip04.mp3
+
+--- p09 Chinese Fantasy Moonlight ---
+cinematic Chinese fantasy music with elegant strings, flute, and a mysterious moonlit atmosphere
+Clips: p09_clip01.mp3, p09_clip02.mp3, p09_clip03.mp3, p09_clip04.mp3
+
+--- p10 Orchestral Battle ---
+dramatic orchestral battle music with rising tension, heavy percussion, and heroic fantasy energy
+Clips: p10_clip01.mp3, p10_clip02.mp3, p10_clip03.mp3, p10_clip04.mp3
+
+--- p11 Playful Villain ---
+playful villain-themed music with quirky rhythm, theatrical humor, and festive celebration mood
+Clips: p11_clip01.mp3, p11_clip02.mp3, p11_clip03.mp3, p11_clip04.mp3
+
+--- p12 Bittersweet Romance ---
+emotional piano and strings music with a gentle, bittersweet, romantic atmosphere
+Clips: p12_clip01.mp3, p12_clip02.mp3, p12_clip03.mp3, p12_clip04.mp3
+
+--- p13 Nervous Chase ---
+fast-paced music with chaotic footsteps, nervous rhythm, and suspenseful movement
+Clips: p13_clip01.mp3, p13_clip02.mp3, p13_clip03.mp3, p13_clip04.mp3
+
+--- p14 Ancient Ceremony ---
+ancient ceremonial music with grand drums, bells, and ritual-like atmosphere
+Clips: p14_clip01.mp3, p14_clip02.mp3, p14_clip03.mp3, p14_clip04.mp3
+
+--- p15 Mirror World ---
+dreamy mirror-world music with ethereal vocals, soft synths, and surreal fantasy mood
+Clips: p15_clip01.mp3, p15_clip02.mp3, p15_clip03.mp3, p15_clip04.mp3
+
+--- p16 Epic Adventure ---
+epic adventure soundtrack with sweeping strings, strong drums, and a sense of destiny
+Clips: p16_clip01.mp3, p16_clip02.mp3, p16_clip03.mp3, p16_clip04.mp3
+
+--- p17 Moonlight Ballad ---
+elegant night-time ballad with moonlight, soft melody, and sentimental emotion
+Clips: p17_clip01.mp3, p17_clip02.mp3, p17_clip03.mp3, p17_clip04.mp3
+
+--- p18 Dark Fantasy ---
+dark fantasy music with mysterious ambience, low strings, and magical tension
+Clips: p18_clip01.mp3, p18_clip02.mp3, p18_clip03.mp3, p18_clip04.mp3
+
+--- p19 Fantasy New Year Dinner ---
+lighthearted festive music for a fantasy New Year dinner scene, humorous but warm
+Clips: p19_clip01.mp3, p19_clip02.mp3, p19_clip03.mp3, p19_clip04.mp3
+
+--- p20 Wind and Clouds ---
+flowing cinematic instrumental music with wind, clouds, and emotional build-up
+Clips: p20_clip01.mp3, p20_clip02.mp3, p20_clip03.mp3, p20_clip04.mp3
+
+Example response row: prompt_id | best_clip | second | third | worst
