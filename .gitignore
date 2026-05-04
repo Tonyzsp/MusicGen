@@ -11,9 +11,10 @@ music4allA+A
 
 # Local evaluation data/audio should stay local.
 data/*
-!data/raw_for_eval/
-data/raw_for_eval/*
-!data/raw_for_eval/manifest_template.csv
+
+# Phase 1 user-study downloads (commit manifest_template.csv only).
+src/eval/eval_phase_1/*
+!src/eval/eval_phase_1/manifest_template.csv
 
 # Local SQLite data files
 src/data/music4all_final.sqlite

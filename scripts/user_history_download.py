@@ -5,7 +5,8 @@ import re
 import subprocess
 from pathlib import Path
 
-DEFAULT_OUTPUT_ROOT = Path("data/raw_for_eval")
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_OUTPUT_ROOT = _REPO_ROOT / "src" / "eval" / "eval_phase_1"
 MANIFEST_FIELDS = [
     "song_id",
     "artist",
@@ -184,7 +185,10 @@ def parse_args():
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="Output directory. Defaults to data/raw_for_eval/<participant-id> if provided.",
+        help=(
+            "Output directory. Defaults to src/eval/eval_phase_1/<participant-id> "
+            "when --participant-id is set, else src/eval/eval_phase_1 (under repo root)."
+        ),
     )
     parser.add_argument("--query-suffix", default="official audio", help="Extra words appended to YouTube search.")
     parser.add_argument(

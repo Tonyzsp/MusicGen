@@ -47,6 +47,15 @@ Gen4Rec/
 │   ├── profile_prompt/
 │   ├── generate/
 │   └── eval/
+│       ├── eval_phase_1/              # user-study song list + yt-dlp clips (local; template in git)
+│       │   └── manifest_template.csv
+│       ├── eval_phase_2/              # example bundled study outputs / docs
+│       ├── run_eval.py
+│       ├── clap_audio.py
+│       ├── data.py
+│       ├── metrics.py
+│       ├── reporting.py
+│       └── viz.py
 ├── music4all/                         # local dataset folder (NOT committed)
 │   ├── listening_history.csv          # must download manually (large)
 │   ├── id_information.csv             # must download manually (large)
