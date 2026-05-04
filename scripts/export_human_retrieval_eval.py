@@ -29,6 +29,7 @@ from app.services.text_compare_service import load_embedding_matrices, retrieve_
 
 
 EVAL_PROMPTS: list[tuple[str, str]] = [
+    # General everyday listening scenarios
     (
         "Rainy Night",
         "slow emotional music for walking alone on a rainy night, gentle piano, quiet, lonely, and reflective",
@@ -54,20 +55,62 @@ EVAL_PROMPTS: list[tuple[str, str]] = [
         "fun dance music for a small party with friends, cheerful, catchy, and easy to move to",
     ),
     (
-        "Sad Memory",
-        "slow sad music for thinking about an old memory, soft piano, emotional, nostalgic, and lonely",
-    ),
-    (
         "Study Focus",
         "calm background music for studying, steady, relaxing, and not distracting",
     ),
     (
-        "Adventure Scene",
-        "cinematic music that feels like starting an adventure, with dramatic strings and drums, exciting, hopeful, and movie-like",
-    ),
-    (
         "Romantic Dinner",
         "smooth romantic dinner music with soft saxophone, warm, intimate, relaxing, and elegant",
+    ),
+
+    # Cinematic / fantasy / prompt-sensitive retrieval scenarios
+    (
+        "Chinese Fantasy Moonlight",
+        "cinematic Chinese fantasy music with elegant strings, flute, and a mysterious moonlit atmosphere",
+    ),
+    (
+        "Orchestral Battle",
+        "dramatic orchestral battle music with rising tension, heavy percussion, and heroic fantasy energy",
+    ),
+    (
+        "Playful Villain",
+        "playful villain-themed music with quirky rhythm, theatrical humor, and festive celebration mood",
+    ),
+    (
+        "Bittersweet Romance",
+        "emotional piano and strings music with a gentle, bittersweet, romantic atmosphere",
+    ),
+    (
+        "Nervous Chase",
+        "fast-paced music with chaotic footsteps, nervous rhythm, and suspenseful movement",
+    ),
+    (
+        "Ancient Ceremony",
+        "ancient ceremonial music with grand drums, bells, and ritual-like atmosphere",
+    ),
+    (
+        "Mirror World",
+        "dreamy mirror-world music with ethereal vocals, soft synths, and surreal fantasy mood",
+    ),
+    (
+        "Epic Adventure",
+        "epic adventure soundtrack with sweeping strings, strong drums, and a sense of destiny",
+    ),
+    (
+        "Moonlight Ballad",
+        "elegant night-time ballad with moonlight, soft melody, and sentimental emotion",
+    ),
+    (
+        "Dark Fantasy",
+        "dark fantasy music with mysterious ambience, low strings, and magical tension",
+    ),
+    (
+        "Fantasy New Year Dinner",
+        "lighthearted festive music for a fantasy New Year dinner scene, humorous but warm",
+    ),
+    (
+        "Wind and Clouds",
+        "flowing cinematic instrumental music with wind, clouds, and emotional build-up",
     ),
 ]
 
