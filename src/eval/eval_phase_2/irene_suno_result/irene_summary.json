@@ -1,0 +1,69 @@
+{
+  "user_id": "irene",
+  "source_top_k": 5,
+  "top_genres": [
+    "electronic",
+    "experimental",
+    "ambient",
+    "ska",
+    "punk",
+    "halloween",
+    "industrial",
+    "soundtrack"
+  ],
+  "top_tags": [
+    "electronic",
+    "experimental",
+    "ambient",
+    "ska",
+    "punk",
+    "halloween",
+    "idm",
+    "gothic",
+    "victoriandustrial",
+    "female vocalists"
+  ],
+  "representative_artists": [
+    "The Aquabats",
+    "múm",
+    "Aphex Twin",
+    "Emilie Autumn",
+    "Trevor Jones"
+  ],
+  "representative_tracks": [
+    {
+      "artist": "The Aquabats",
+      "song": "Robot Theme Song"
+    },
+    {
+      "artist": "múm",
+      "song": "Random Summer"
+    },
+    {
+      "artist": "Aphex Twin",
+      "song": "Nannou"
+    },
+    {
+      "artist": "Emilie Autumn",
+      "song": "The Art of Suicide"
+    },
+    {
+      "artist": "Trevor Jones",
+      "song": "Into The Labyrinth"
+    }
+  ],
+  "audio_profile": {
+    "danceability_mean": 0.539,
+    "energy_mean": 0.34,
+    "valence_mean": 0.479,
+    "tempo_mean": 127.861
+  },
+  "mood_summary": [
+    "soft",
+    "balanced",
+    "bittersweet",
+    "reflective",
+    "flowing"
+  ],
+  "rule_based_profile_paragraph": "This listener gravitates toward electronic, experimental, ambient, ska, with recurring traits such as electronic, experimental, ambient, ska, punk. Their retrieved songs suggest a preference for soft, balanced, bittersweet, reflective, often centered on expressive vocals and restrained arrangements. Representative artists include The Aquabats, múm, Aphex Twin, Emilie Autumn, pointing to a taste for emotionally detailed, intimate music."
+}

@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.1",
+  "user_id": "irene",
+  "top_k": 5,
+  "retrieval": {
+    "space": "clap_embedding_cosine",
+    "note": "similarity_score is dot product on L2-normalized 512-d vectors (equals cosine similarity)."
+  },
+  "songs": [
+    {
+      "rank": 1,
+      "song_id": "iNdjAQwH5b0sB8Fm",
+      "similarity_score": 0.6280630826950073,
+      "info": {
+        "artist": "The Aquabats",
+        "song": "Robot Theme Song",
+        "album_name": "Myths, Legends And Other Amazing Adventures Vol. 2"
+      },
+      "metadata": {
+        "spotify_id": "05xTiCemDEtlh1NQogWU8F",
+        "popularity": 17.0,
+        "release": 2000,
+        "danceability": 0.731,
+        "energy": 0.259,
+        "key": 7.0,
+        "mode": 1.0,
+        "valence": 0.657,
+        "tempo": 140.036,
+        "duration_ms": 65440
+      },
+      "genres": "ska,punk,halloween,electronic",
+      "tags": "ska,punk,halloween,electronic"
+    },
+    {
+      "rank": 2,
+      "song_id": "c20jASVtXrznMeHL",
+      "similarity_score": 0.6016356945037842,
+      "info": {
+        "artist": "múm",
+        "song": "Random Summer",
+        "album_name": "Random Summer"
+      },
+      "metadata": {
+        "spotify_id": "1M8ESeHM9NeGFkhN6Xr5vM",
+        "popularity": 18.0,
+        "release": 2019,
+        "danceability": 0.0912,
+        "energy": 0.0649,
+        "key": 7.0,
+        "mode": 1.0,
+        "valence": 0.129,
+        "tempo": 172.243,
+        "duration_ms": 196980
+      },
+      "genres": "electronic,experimental,ambient",
+      "tags": "electronic,experimental,ambient"
+    },
+    {
+      "rank": 3,
+      "song_id": "aAlxRlMputVWbxc4",
+      "similarity_score": 0.5953096151351929,
+      "info": {
+        "artist": "Aphex Twin",
+        "song": "Nannou",
+        "album_name": "Windowlicker"
+      },
+      "metadata": {
+        "spotify_id": "3sUVNEHBQJSb4qRyQ4ahwK",
+        "popularity": 27.0,
+        "release": 1999,
+        "danceability": 0.7090000000000001,
+        "energy": 0.594,
+        "key": 9.0,
+        "mode": 0.0,
+        "valence": 0.47,
+        "tempo": 151.984,
+        "duration_ms": 255773
+      },
+      "genres": "electronic,ambient,experimental",
+      "tags": "electronic,ambient,idm,experimental"
+    },
+    {
+      "rank": 4,
+      "song_id": "4PnDUzat0rBBHoUw",
+      "similarity_score": 0.5895359516143799,
+      "info": {
+        "artist": "Emilie Autumn",
+        "song": "The Art of Suicide",
+        "album_name": "The Opheliac Companion"
+      },
+      "metadata": {
+        "spotify_id": "4zHfeBK9Xj8wrjfU70wKYI",
+        "popularity": 3.0,
+        "release": 2009,
+        "danceability": 0.5760000000000001,
+        "energy": 0.187,
+        "key": 0.0,
+        "mode": 1.0,
+        "valence": 0.573,
+        "tempo": 84.43299999999998,
+        "duration_ms": 2764199
+      },
+      "genres": "industrial",
+      "tags": "gothic,victoriandustrial,female vocalists,alternative,industrial"
+    },
+    {
+      "rank": 5,
+      "song_id": "0gOmo91ZWPdfv0kO",
+      "similarity_score": 0.5887173414230347,
+      "info": {
+        "artist": "Trevor Jones",
+        "song": "Into The Labyrinth",
+        "album_name": "Labyrinth (From The Original Soundtrack Of The Jim Henson Film)"
+      },
+      "metadata": {
+        "spotify_id": "1A05Tzudebpd7ZiZtVVafz",
+        "popularity": 32.0,
+        "release": 1986,
+        "danceability": 0.586,
+        "energy": 0.593,
+        "key": 9.0,
+        "mode": 1.0,
+        "valence": 0.564,
+        "tempo": 90.611,
+        "duration_ms": 131027
+      },
+      "genres": "soundtrack",
+      "tags": "soundtrack,instrumental,labyrinth"
+    }
+  ]
+}
