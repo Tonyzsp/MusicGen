@@ -129,9 +129,12 @@ def run_generation_pipeline(
     tempo_hint_bpm: int | None = None,
     duration_hint_seconds: int | None = None,
     prompt_version: str = "existing-profile-prompt-v1",
+    outputs_root: Path | None = None,
 ) -> tuple[str, dict, str]:
     resolved_user_id = user_id or str(prompt_output["user_id"])
-    run_id, artifact_paths = build_artifact_paths(user_id=resolved_user_id, provider=provider)
+    run_id, artifact_paths = build_artifact_paths(
+        user_id=resolved_user_id, provider=provider, outputs_root=outputs_root
+    )
     artifact_paths.ensure_directories()
     save_json(prompt_output, artifact_paths.prompt_input_json)
 

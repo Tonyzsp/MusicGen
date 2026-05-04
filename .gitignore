@@ -20,6 +20,7 @@ data/*
 /src/eval/eval_phase_2/*/clips_30s/
 /src/eval/eval_phase_2/*/download_manifest.csv
 /src/eval/eval_phase_2/*/manifest.csv
+/src/eval/eval_phase_2/*/result/
 
 # Local SQLite data files
 src/data/music4all_final.sqlite
