@@ -1,8 +1,9 @@
 """
-Run Phase 1 evaluation export: human preference test on text-to-music retrieval.
+Phase 1 (lab): base vs fine-tuned CLAP text-to-music retrieval evaluation.
 
-For each prompt: top-k from base CLAP and top-k from fine-tuned CLAP, shuffle four clips,
-copy MP3s with blind filenames, and write a researcher-only manifest.
+For each prompt: top-k from zeroshot (base) CLAP and top-k from fine-tuned CLAP,
+shuffle four clips, copy MP3s with blind filenames, and write a researcher-only
+manifest. Phase 2 custom-song-list WAV workflow lives in `user_history_download.py`.
 
 Usage (from repo root):
   python scripts/run_phase1_eval.py --out-dir outputs/phase1_eval
@@ -129,7 +130,9 @@ def _build_four_candidates(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Export blinded audio clips for base vs fine-tuned CLAP retrieval evaluation."
+        description=(
+            "Phase 1 (lab): export blinded clips for base (zeroshot) vs fine-tuned CLAP retrieval comparison."
+        ),
     )
     parser.add_argument(
         "--out-dir",

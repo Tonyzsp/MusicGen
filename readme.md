@@ -25,6 +25,11 @@ The project runs in six main stages:
 
 Implementation details are documented in [`implementation.md`](implementation.md).
 
+### Human evaluation phases 
+
+- **Phase 1 — Base vs fine-tuned retrieval**: text-to-music retrieval with **zeroshot (base)** vs **fine-tuned** CLAP embeddings; export blind clips and a researcher manifest via `scripts/run_phase1_eval.py` (default output: `outputs/phase1_eval/`).
+- **Phase 2 — Custom song list (recommendation study)**: participants bring a **custom CSV song list**; the repo downloads audio and builds **30 s WAV** clips under `src/eval/eval_phase_2/` for the personalized recommendation / generation pipeline (`scripts/user_history_download.py`).
+
 ---
 
 ## Project Structure (Current)
@@ -40,16 +45,21 @@ Gen4Rec/
 │   ├── streamlit_app.py
 ├── scripts/
 │   ├── build_music4all_aa_index.py
-│   └── run_full_pipeline.py
+│   ├── run_full_pipeline.py
+│   ├── run_phase1_eval.py             # phase 1: base vs finetuned retrieval export → outputs/phase1_eval
+│   └── user_history_download.py       # phase 2: custom song list → WAV under src/eval/eval_phase_2
 ├── src/
 │   ├── data/
 │   ├── embed/
 │   ├── profile_prompt/
 │   ├── generate/
 │   └── eval/
-│       ├── eval_phase_1/              # user-study song list + yt-dlp clips (local; template in git)
-│       │   └── manifest_template.csv
-│       ├── eval_phase_2/              # example bundled study outputs / docs
+│       ├── eval_phase_1/              # phase 1 retrieval study: bundled researcher manifest + participant sheet
+│       │   ├── manifest.json
+│       │   └── participant_instructions.txt
+│       ├── eval_phase_2/              # phase 2 custom-list study: WAV template + bundles (manifest_template.csv)
+│       │   ├── manifest_template.csv
+│       │   └── eason_suno_results/    # example bundled outputs / docs
 │       ├── run_eval.py
 │       ├── clap_audio.py
 │       ├── data.py
@@ -76,6 +86,7 @@ Gen4Rec/
 │       ├── music_audioset_epoch_15_esc_90.14.pt   # download manually
 │       └── clap_finetuned_best.pt                 # download manually
 ├── outputs/                           # generated artifacts (NOT committed)
+│   └── phase1_eval/                   # default --out-dir for run_phase1_eval.py (audio/, manifest.json, …)
 ├── notebooks/
 ├── environment.yaml
 ├── environment-windows.yaml

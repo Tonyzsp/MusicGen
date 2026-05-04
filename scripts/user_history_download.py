@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT_ROOT = _REPO_ROOT / "src" / "eval" / "eval_phase_1"
+DEFAULT_OUTPUT_ROOT = _REPO_ROOT / "src" / "eval" / "eval_phase_2"
 MANIFEST_FIELDS = [
     "song_id",
     "artist",
@@ -178,7 +178,10 @@ def write_manifest(path, rows):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Download participant history songs from YouTube and create middle 30s clips."
+        description=(
+            "Phase 2 (lab): custom participant song list → YouTube download + middle 30s WAV clips "
+            "under src/eval/eval_phase_2/ (for recommendation / generation user studies)."
+        ),
     )
     parser.add_argument("--input", default="songs.csv", help="CSV with song_id/id, artist, and title/song columns.")
     parser.add_argument("--participant-id", default=None, help="Participant id used for default output directory.")
@@ -186,8 +189,8 @@ def parse_args():
         "--output-dir",
         default=None,
         help=(
-            "Output directory. Defaults to src/eval/eval_phase_1/<participant-id> "
-            "when --participant-id is set, else src/eval/eval_phase_1 (under repo root)."
+            "Output directory. Defaults to src/eval/eval_phase_2/<participant-id> "
+            "when --participant-id is set, else src/eval/eval_phase_2 (under repo root)."
         ),
     )
     parser.add_argument("--query-suffix", default="official audio", help="Extra words appended to YouTube search.")
