@@ -145,7 +145,7 @@ def main() -> None:
     emb_dir.mkdir(parents=True, exist_ok=True)
 
     wav_paths = _collect_wavs(clips_dir)
-    print(f"[1/4] Embedding {len(wav_paths)} WAV(s) with encoder={args.encoder!r} …")
+    print(f"[1/5] Embedding {len(wav_paths)} WAV(s) with encoder={args.encoder!r} …")
     embeddings, enc_cfg = embed_audio_paths([str(p) for p in wav_paths], encoder=args.encoder)
     ordered = [embeddings[str(p)] for p in wav_paths]
     user_vec = _mean_l2_normalize(ordered)
@@ -171,7 +171,7 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    print("[2/4] Retrieval + profile + prompt …")
+    print("[2/5] Retrieval + profile + prompt …")
     profile_out = build_or_load_profile_pipeline(
         user_id=synthetic_user_id,
         embedding_variant=embedding_variant,
@@ -189,7 +189,7 @@ def main() -> None:
     shutil.copy2(paths["prompt"], result_dir / "music_prompt.json")
 
     prompt_payload = profile_out["prompt"]
-    print("[3/4] Suno generation …")
+    print("[3/5] Suno generation …")
     run_id, manifest, manifest_path = run_generation_pipeline(
         prompt_output=prompt_payload,
         provider="suno",
