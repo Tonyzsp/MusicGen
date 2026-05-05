@@ -74,7 +74,7 @@ Gen4Rec/
 │   ├── id_tags.csv                    # must download manually (large)
 │   ├── id_metadata.csv                # must download manually (large)
 │   └── audios/                        # must download manually (very large)
-├── music4allA+A/                      # optional artist/album metadata (NOT committed)
+├── music4allA+A/                      # optional A+A metadata for visual enrichment (NOT committed)
 │   ├── album_json/
 │   ├── artists_json/
 │   ├── album_modality_splits.json
@@ -95,6 +95,51 @@ Gen4Rec/
 ```
 
 Note: dataset CSV/audio files and model checkpoints are intentionally not stored in git due size. Each teammate needs to download them locally. Phase 2 per-participant folders (`raw/`, `clips_30s/`, `manifest.csv`, `download_manifest.csv`, `result/`) are also gitignored under `src/eval/eval_phase_2/`; commit only code and `manifest_template.csv`.
+
+### Optional: Music4All A+A Visual Enrichment
+
+The retrieval page can optionally enrich preview cards with Music4All A+A artist/album metadata. This adds album covers, artist images, release dates, listeners/play counts, and artist/album genre chips when the retrieved `song_id` is covered by Music4All A+A.
+
+This does not change the retrieval model or ranking. It only improves the Streamlit frontend display.
+
+Expected local paths (for Music4All A+A enrichment):
+
+```text
+Gen4Rec/
+├── music4all/
+│   └── id_information.csv
+├── music4allA+A/
+│   ├── album_json/
+│   └── artists_json/
+└── data/
+    └── derived/
+        └── music4all_aa_song_index.parquet
+```
+
+Build the local Parquet index:
+
+```bash
+conda activate gen4rec
+python scripts/build_music4all_aa_index.py
+```
+
+Equivalent explicit command:
+
+```bash
+python scripts/build_music4all_aa_index.py \
+  --aa-root music4allA+A \
+  --music4all-info music4all/id_information.csv \
+  --out data/derived/music4all_aa_song_index.parquet
+```
+
+The Streamlit app loads this file automatically if it exists. To use a different index path:
+
+```bash
+export GEN4REC_MUSIC4ALL_AA_INDEX_PATH=/path/to/music4all_aa_song_index.parquet
+streamlit run app/streamlit_app.py
+```
+
+Note: Music4All A+A text summaries are masked for research use (`<Person>`, `<Genre>`), so the frontend currently uses only structured fields and images by default.
 
 ---
 
@@ -266,51 +311,6 @@ conda env create -f environment.yaml
 conda activate gen4rec
 streamlit run app/streamlit_app.py
 ```
-
-### Optional: Music4All A+A Visual Enrichment
-
-The retrieval page can optionally enrich preview cards with Music4All A+A artist/album metadata. This adds album covers, artist images, release dates, listeners/play counts, and artist/album genre chips when the retrieved `song_id` is covered by Music4All A+A.
-
-This does not change the retrieval model or ranking. It only improves the Streamlit frontend display.
-
-Expected local paths:
-
-```text
-Gen4Rec/
-├── music4all/
-│   └── id_information.csv
-├── music4allA+A/
-│   ├── album_json/
-│   └── artists_json/
-└── data/
-    └── derived/
-        └── music4all_aa_song_index.parquet
-```
-
-Build the local Parquet index:
-
-```bash
-conda activate gen4rec
-python scripts/build_music4all_aa_index.py
-```
-
-Equivalent explicit command:
-
-```bash
-python scripts/build_music4all_aa_index.py \
-  --aa-root music4allA+A \
-  --music4all-info music4all/id_information.csv \
-  --out data/derived/music4all_aa_song_index.parquet
-```
-
-The Streamlit app loads this file automatically if it exists. To use a different index path:
-
-```bash
-export GEN4REC_MUSIC4ALL_AA_INDEX_PATH=/path/to/music4all_aa_song_index.parquet
-streamlit run app/streamlit_app.py
-```
-
-Note: Music4All A+A text summaries are masked for research use (`<Person>`, `<Genre>`), so the frontend currently uses only structured fields and images by default.
 
 ---
 
