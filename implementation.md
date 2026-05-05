@@ -225,14 +225,15 @@ or the entire `result/` directory under each participant. These paths are ignore
 by `.gitignore`.
 
 
-### Phase 2 end-to-end: WAV → Music4All → profile → Suno
+### Phase 2 end-to-end: WAV → Music4All → profile → Suno → rerank
 
 `scripts/run_phase2_eval.py` reads `clips_30s/*.wav`, averages **finetuned** CLAP
 embeddings into one synthetic user vector (`phase2_<participant>`), runs the
 same retrieval + LLM profile/prompt path as the main app (via
 `build_or_load_profile_pipeline`), then calls `run_generation_pipeline` with
 `outputs_root = src/eval/eval_phase_2/<participant>/result` (same nested layout as
-`outputs/recSongs/<user>/<run>/`). Suno artifacts land at:
+`outputs/recSongs/<user>/<run>/`), then runs `run_rerank_from_manifest` on the
+generated candidates. Rerank artifacts land next to the run manifest.
 
 ```text
 src/eval/eval_phase_2/<participant>/result/
@@ -244,6 +245,7 @@ src/eval/eval_phase_2/<participant>/result/
   _phase2_emb/                 # temporary user .npy used for retrieval
   phase2_<participant>/
     <run_id>/                  # Suno run: prompt_input, generation_spec, audio/, run_manifest.json, report.md
+                              # + rerank_results.json + aliases: song1/song2 (song1 has higher cosine)
 ```
 
 Example:
@@ -254,7 +256,8 @@ conda run -n gen4rec python scripts/run_phase2_eval.py --participant Tony --top-
 
 `run_phase2_eval.py` also supports `--clips-dir`, `--result-dir`, `--encoder`,
 `--openai-model`, `--generation-model`, `--num-calls`, `--max-concurrency`,
-`--negative-prompt`, and `--rebuild-profile`.
+`--negative-prompt`, `--rerank-top-k`, `--rerank-encoder`,
+`--rerank-diversity-threshold`, and `--rebuild-profile`.
 
 ## 6) Naming and Reuse
 
