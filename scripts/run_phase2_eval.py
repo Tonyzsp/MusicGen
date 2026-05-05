@@ -27,7 +27,9 @@ REPO_ROOT = CURRENT_FILE.parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from src.eval.data import EvalDataConfig
 from src.eval.clap_audio import embed_audio_paths
+from src.generate.rerank import run_rerank_from_manifest
 from src.generate.run_generate import run_generation_pipeline
 from src.profile_prompt.profile_pipeline import build_or_load_profile_pipeline
 
@@ -48,6 +50,16 @@ def _collect_wavs(clips_dir: Path) -> list[Path]:
     if not wavs:
         raise FileNotFoundError(f"No .wav files under {clips_dir}")
     return wavs
+
+
+def _copy_if_exists(src_path: str | None, dst: Path) -> bool:
+    if not src_path:
+        return False
+    src = Path(src_path)
+    if not src.exists():
+        return False
+    shutil.copy2(src, dst)
+    return True
 
 
 def main() -> None:
@@ -101,6 +113,19 @@ def main() -> None:
     )
     parser.add_argument("--max-concurrency", type=int, default=1, help="Max concurrent Suno calls.")
     parser.add_argument("--negative-prompt", default=None)
+    parser.add_argument("--rerank-top-k", type=int, default=2, help="Final number of tracks after reranking.")
+    parser.add_argument(
+        "--rerank-encoder",
+        choices=["finetuned", "zeroshot", "auto"],
+        default="finetuned",
+        help="CLAP encoder used for rerank cosine similarity.",
+    )
+    parser.add_argument(
+        "--rerank-diversity-threshold",
+        type=float,
+        default=None,
+        help="Optional diversity filter threshold applied during rerank.",
+    )
     parser.add_argument(
         "--rebuild-profile",
         action="store_true",
@@ -176,20 +201,55 @@ def main() -> None:
         outputs_root=result_dir,
     )
 
+    print("[4/5] Rerank generated tracks …")
+    EvalDataConfig.USER_EMB_PATH = str(user_emb_path)
+    EvalDataConfig.USER_IDS_PATH = str(user_ids_path)
+    rerank_result, rerank_output_path = run_rerank_from_manifest(
+        manifest_path=manifest_path,
+        top_k=max(1, int(args.rerank_top_k)),
+        diversity_threshold=args.rerank_diversity_threshold,
+        encoder=str(args.rerank_encoder),
+    )
+
+    ranked = rerank_result.get("final_selected_tracks") or rerank_result.get("candidates") or []
+    song_aliases: list[dict[str, object]] = []
+    run_root = Path(manifest_path).parent
+    for idx, item in enumerate(ranked[:2], start=1):
+        alias = f"song{idx}"
+        copied_mp3 = _copy_if_exists(item.get("path"), run_root / f"{alias}.mp3")
+        copied_json = _copy_if_exists(item.get("metadata_path"), run_root / f"{alias}.json")
+        copied_lyrics = _copy_if_exists(item.get("lyric_path"), run_root / f"{alias}_lyrics.txt")
+        song_aliases.append(
+            {
+                "alias": alias,
+                "source_path": item.get("path"),
+                "clap_cosine_score": item.get("clap_cosine_score"),
+                "copied_mp3": copied_mp3,
+                "copied_json": copied_json,
+                "copied_lyrics": copied_lyrics,
+            }
+        )
+
     done = {
         "run_id": run_id,
         "manifest_path": manifest_path,
         "generation_artifacts_root": str(Path(manifest_path).parent),
+        "rerank_output_path": rerank_output_path,
+        "rerank_top_k": max(1, int(args.rerank_top_k)),
+        "song_aliases": song_aliases,
         "profile_cache_paths": paths,
     }
     (result_dir / "phase2_generation_meta.json").write_text(
         json.dumps(done, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print("[4/4] Done.")
+    print("[5/5] Done.")
     print(f"  result_dir: {result_dir}")
     print(f"  run_id: {run_id}")
     print(f"  manifest: {manifest_path}")
+    print(f"  rerank: {rerank_output_path}")
+    if song_aliases:
+        print("  aliases: " + ", ".join(f"{x['alias']}={x['clap_cosine_score']:.4f}" for x in song_aliases if isinstance(x.get("clap_cosine_score"), float)))
 
 
 if __name__ == "__main__":
