@@ -96,7 +96,7 @@ Gen4Rec/
 └── .gitignore
 ```
 
-Note: dataset CSV/audio files and model checkpoints are intentionally not stored in git due size. Each teammate needs to download them locally. Phase 2 per-participant folders (`raw/`, `clips_30s/`, `manifest.csv`, `download_manifest.csv`, `result/`) are also gitignored under `src/eval/eval_phase_2/`; commit only code and `manifest_template.csv` (plus bundled example dirs like `eason_suno_results/`).
+Note: dataset CSV/audio files and model checkpoints are intentionally not stored in git due size. Each teammate needs to download them locally. Phase 2 per-participant folders (`raw/`, `clips_30s/`, `manifest.csv`, `download_manifest.csv`, `result/`) are also gitignored under `src/eval/eval_phase_2/`; commit only code and `manifest_template.csv`.
 
 ---
 
