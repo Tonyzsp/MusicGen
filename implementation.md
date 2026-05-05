@@ -155,7 +155,7 @@ Main outputs:
 
 Evaluations are split into **phase 1 (retrieval)** vs **phase 2 (custom song list / recommendation)**; see also [`readme.md`](readme.md) (Human evaluation phases).
 
-### Phase 1 (base vs fine-tuned retrieval)
+### Phase 1 User Study (base vs fine-tuned retrieval)
 
 Human-facing check on **text-to-music retrieval**: for fixed text prompts, compare
 candidates from **zeroshot (base)** vs **fine-tuned** CLAP embedding matrices,
@@ -166,7 +166,7 @@ shuffle clips for blind listening, and write a researcher-only manifest.
   `participant_instructions.txt`, …)
 - Override with `--out-dir` if needed.
 
-### Phase 2 (custom song list): WAV clips for recommendation study
+### Phase 2 User Study (custom song list): WAV clips for recommendation study
 
 This phase collects each participant’s **custom CSV song list** (not Music4All
 history), downloads matched audio, converts to local **30-second WAV** clips
@@ -212,20 +212,18 @@ src/eval/eval_phase_2/<participant_id>/
   clips_30s/                  # 30-second wav clips
 ```
 
-# If artist is unknown, leave artist blank in the CSV. The script will search by title.
-```
+- If artist is unknown, leave artist blank in the CSV. The script will search by title.
 
-Please be aware that template should be placed under human annotator's folder.
+- Please be aware that template should be placed under human annotator's folder.
 
-Check `download_manifest.csv` after each run. Confirm that `youtube_title` and
+- Check `download_manifest.csv` after each run. Confirm that `youtube_title` and
 `youtube_url` match the intended songs before using the clips for CLAP embedding
 or human evaluation.
 
-Do not commit participant inputs, downloaded audio, WAV clips, `download_manifest.csv`,
+- Do not commit participant inputs, downloaded audio, WAV clips, `download_manifest.csv`,
 or the entire `result/` directory under each participant. These paths are ignored
 by `.gitignore`.
 
----
 
 ### Phase 2 end-to-end: WAV → Music4All → profile → Suno
 
