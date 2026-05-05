@@ -14,6 +14,7 @@ OUTPUTS_ROOT = REPO_ROOT / "outputs"
 PROFILES_ROOT = OUTPUTS_ROOT / "profiles"
 RECSONGS_ROOT = OUTPUTS_ROOT / "recSongs"
 EVAL_ROOT = OUTPUTS_ROOT / "eval"
+PHASE2_EVAL_ROOT = REPO_ROOT / "src" / "eval" / "eval_phase_2"
 
 
 def _load_json_if_exists(path: Path) -> dict[str, Any] | None:
@@ -132,6 +133,30 @@ def list_generation_run_dirs(user_id: str) -> list[Path]:
     if not user_root.exists():
         return []
     return sorted([path for path in user_root.iterdir() if path.is_dir()], reverse=True)
+
+
+def list_phase2_eval_participants() -> list[str]:
+    if not PHASE2_EVAL_ROOT.exists():
+        return []
+    participants = []
+    for path in PHASE2_EVAL_ROOT.iterdir():
+        if not path.is_dir():
+            continue
+        if (path / "result").exists() or (path / "clips_30s").exists() or (path / "manifest.csv").exists():
+            participants.append(path.name)
+    return sorted(participants)
+
+
+def list_phase2_eval_run_dirs(participant: str) -> list[Path]:
+    safe_participant = sanitize_segment(participant)
+    result_root = PHASE2_EVAL_ROOT / safe_participant / "result"
+    user_root = result_root / f"phase2_{safe_participant}"
+    if not user_root.exists():
+        return []
+    return sorted(
+        [path for path in user_root.iterdir() if path.is_dir() and (path / "run_manifest.json").exists()],
+        reverse=True,
+    )
 
 
 def get_eval_paths(user_id: str, run_id: str) -> dict[str, Path]:

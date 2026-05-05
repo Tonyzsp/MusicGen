@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import sys
@@ -19,9 +20,13 @@ if str(REPO_ROOT) not in sys.path:
 from app.services.artifact_service import (
     EvalArtifacts,
     GenerationRunArtifacts,
+    PHASE2_EVAL_ROOT,
     PROFILES_ROOT,
     ProfileArtifacts,
     load_eval_artifacts,
+    list_phase2_eval_participants,
+    list_phase2_eval_run_dirs,
+    load_generation_run,
     load_profile_artifacts,
     read_binary_file,
 )
@@ -87,6 +92,16 @@ def get_all_known_users() -> list[str]:
         ensure_useremb_local_file(UserEmbConfig.LISTENING_HISTORY_PATH, "Listening history table")
     )
     return sorted(history_df["user_id"].astype(str).unique().tolist())
+
+
+@st.cache_data(show_spinner=False)
+def get_phase2_eval_participants() -> list[str]:
+    return list_phase2_eval_participants()
+
+
+@st.cache_data(show_spinner=False)
+def get_phase2_eval_run_dirs(participant: str) -> list[str]:
+    return [str(path) for path in list_phase2_eval_run_dirs(participant)]
 
 
 @st.cache_resource(show_spinner=False)
@@ -887,6 +902,131 @@ def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> 
                 st.json(run_artifacts.rerank)
 
 
+def _load_json_file(path: Path) -> dict[str, object] | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _render_phase2_eval_results_page() -> None:
+    st.markdown("## Phase 2 Human Eval Results")
+    st.caption(
+        "Inspect real-user Phase 2 runs from `src/eval/eval_phase_2/<participant>/result`: "
+        "input clips, retrieved profile, Suno candidates, and reranked final songs."
+    )
+
+    participants = get_phase2_eval_participants()
+    if not participants:
+        st.info(f"No Phase 2 eval participants found under `{PHASE2_EVAL_ROOT}`.")
+        return
+
+    with st.sidebar:
+        st.markdown("### Phase 2 Eval Results")
+        participant = st.selectbox("Participant", participants, index=0)
+        run_dir_options = get_phase2_eval_run_dirs(participant)
+        if not run_dir_options:
+            st.warning("No completed run with `run_manifest.json` found for this participant.")
+            return
+        run_labels = [Path(path).name for path in run_dir_options]
+        selected_run_label = st.selectbox("Run", run_labels, index=0)
+        selected_run_dir = Path(run_dir_options[run_labels.index(selected_run_label)])
+
+    participant_root = PHASE2_EVAL_ROOT / sanitize_segment(participant)
+    result_root = participant_root / "result"
+    run_artifacts = load_generation_run(selected_run_dir)
+    phase2_meta = _load_json_file(result_root / "phase2_generation_meta.json")
+    wav_meta = _load_json_file(result_root / "wav_embedding_meta.json")
+    profile_summary = _load_json_file(result_root / "profile_summary.json")
+    profile_prompt = _load_json_file(result_root / "music_prompt.json")
+
+    summary_cols = st.columns(4)
+    summary_cols[0].metric("Participant", participant)
+    summary_cols[1].metric("Run ID", run_artifacts.run_id)
+    summary_cols[2].metric("Candidates", run_artifacts.manifest.get("rerank_ready", {}).get("candidate_count"))
+    summary_cols[3].metric("Selected", len([track for track in run_artifacts.tracks if track.is_selected]))
+    st.caption(f"Run root: `{selected_run_dir}`")
+
+    tabs = st.tabs(["Final songs", "Input clips", "Profile + prompt", "Artifacts"])
+    with tabs[0]:
+        _render_generation_section(run_artifacts)
+
+    with tabs[1]:
+        st.subheader("Real-user input clips")
+        if wav_meta:
+            st.caption(
+                f"Encoder: `{wav_meta.get('encoder', 'unknown')}` | "
+                f"Synthetic user: `{wav_meta.get('synthetic_user_id', 'unknown')}`"
+            )
+            clip_paths = [Path(str(path)) for path in wav_meta.get("clips", [])]
+        else:
+            clip_paths = sorted((participant_root / "clips_30s").glob("*.wav"))
+
+        if not clip_paths:
+            st.info("No input clips found.")
+        else:
+            for idx, clip_path in enumerate(clip_paths, start=1):
+                with st.expander(f"{idx}. {clip_path.name}", expanded=False):
+                    st.write(f"Path: `{clip_path}`")
+                    audio_bytes = read_binary_file(clip_path)
+                    if audio_bytes is not None:
+                        st.audio(audio_bytes, format="audio/wav")
+                    else:
+                        st.warning("Clip file is missing.")
+
+        manifest_path = participant_root / "manifest.csv"
+        download_manifest_path = participant_root / "download_manifest.csv"
+        if manifest_path.exists():
+            with st.expander("Participant song manifest"):
+                st.dataframe(pd.read_csv(manifest_path), width="stretch")
+        if download_manifest_path.exists():
+            with st.expander("Download manifest"):
+                st.dataframe(pd.read_csv(download_manifest_path), width="stretch")
+
+    with tabs[2]:
+        st.subheader("Retrieved profile and generated prompt")
+        if profile_summary:
+            language_profile = profile_summary.get("language_profile", {})
+            metric_cols = st.columns(4)
+            metric_cols[0].metric("Source top-k", profile_summary.get("source_top_k"))
+            metric_cols[1].metric("Dominant mode", language_profile.get("dominant_mode", "unknown"))
+            metric_cols[2].metric("Instrumental ratio", _format_metric_value(language_profile.get("instrumental_ratio")))
+            metric_cols[3].metric("Tempo mean", _format_metric_value(profile_summary.get("audio_profile", {}).get("tempo_mean")))
+            profile_text = profile_summary.get("rule_based_profile_paragraph")
+            if profile_text:
+                st.markdown("**Rule-based profile summary**")
+                st.write(profile_text)
+            with st.expander("Profile summary JSON"):
+                st.json(profile_summary)
+        else:
+            st.info("No copied `profile_summary.json` found.")
+
+        if profile_prompt:
+            prompt_text = profile_prompt.get("suno_generation_prompt")
+            profile_paragraph = profile_prompt.get("profile_paragraph")
+            if profile_paragraph:
+                st.markdown("**LLM profile paragraph**")
+                st.write(profile_paragraph)
+            if prompt_text:
+                st.markdown("**Suno prompt**")
+                st.text_area("Prompt", value=str(prompt_text), height=140, disabled=True)
+            with st.expander("Music prompt JSON"):
+                st.json(profile_prompt)
+        else:
+            st.info("No copied `music_prompt.json` found.")
+
+    with tabs[3]:
+        st.subheader("Phase 2 artifact paths")
+        if phase2_meta:
+            st.json(phase2_meta)
+        else:
+            st.info("No `phase2_generation_meta.json` found.")
+        with st.expander("Run manifest"):
+            st.json(run_artifacts.manifest)
+        if run_artifacts.rerank:
+            with st.expander("Rerank results"):
+                st.json(run_artifacts.rerank)
+
+
 def _render_saved_eval_summary(eval_artifacts: EvalArtifacts) -> None:
     if eval_artifacts.summary:
         run_summary = eval_artifacts.summary.get("run", {})
@@ -1013,6 +1153,7 @@ def main() -> None:
             options=[
                 "Embedding Retrieval (Base vs Finetuned)",
                 "Generate AI Song",
+                "Phase 2 Human Eval Results",
             ],
             index=0,
             horizontal=False,
@@ -1020,6 +1161,7 @@ def main() -> None:
         )
         show_query_compare = app_mode == "Embedding Retrieval (Base vs Finetuned)"
         show_generate_page = app_mode == "Generate AI Song"
+        show_phase2_eval_results = app_mode == "Phase 2 Human Eval Results"
         generate_section = "Overview"
         if show_generate_page:
             generate_section = st.radio(
@@ -1108,6 +1250,10 @@ def main() -> None:
     if show_query_compare:
         st.caption("Compare retrieval behavior in zeroshot vs finetuned embedding spaces.")
         render_query_compare_page()
+        return
+
+    if show_phase2_eval_results:
+        _render_phase2_eval_results_page()
         return
 
     if build_embedding_clicked:
