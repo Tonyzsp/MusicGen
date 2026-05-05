@@ -42,10 +42,16 @@ Want to generate personalized Suno music from your own playlist? Use this Phase 
 src/eval/eval_phase_2/<your_name>/manifest.csv
 ```
 
-Use this CSV header:
+Use a CSV like this:
 
 ```csv
 song_id,artist,title
+the_way,XXXTENTACION,The Way
+jocelyn_flores,XXXTENTACION,Jocelyn Flores
+whoa,XXXTENTACION,whoa
+7_years,Lukas Graham,7 Years
+a_sky_full_of_stars,Coldplay,A Sky Full of Stars
+a_lot,21 Savage,a lot
 ```
 
 2. Download songs + build 30s WAV clips:
