@@ -212,6 +212,21 @@ src/eval/eval_phase_2/<participant_id>/
   clips_30s/                  # 30-second wav clips
 ```
 
+# If artist is unknown, leave artist blank in the CSV. The script will search by title.
+```
+
+Please be aware that template should be placed under human annotator's folder.
+
+Check `download_manifest.csv` after each run. Confirm that `youtube_title` and
+`youtube_url` match the intended songs before using the clips for CLAP embedding
+or human evaluation.
+
+Do not commit participant inputs, downloaded audio, WAV clips, `download_manifest.csv`,
+or the entire `result/` directory under each participant. These paths are ignored
+by `.gitignore`.
+
+---
+
 ### Phase 2 end-to-end: WAV → Music4All → profile → Suno
 
 `scripts/run_phase2_eval.py` reads `clips_30s/*.wav`, averages **finetuned** CLAP
@@ -242,30 +257,6 @@ conda run -n gen4rec python scripts/run_phase2_eval.py --participant Tony --top-
 `run_phase2_eval.py` also supports `--clips-dir`, `--result-dir`, `--encoder`,
 `--openai-model`, `--generation-model`, `--num-calls`, `--max-concurrency`,
 `--negative-prompt`, and `--rebuild-profile`.
-
-### `user_history_download.py` options
-
-```bash
-# Re-download and recreate clips even if files already exist.
-conda run -n gen4rec python scripts/user_history_download.py \
-  --participant-id jerry \
-  --input src/eval/eval_phase_2/jerry/manifest.csv \
-  --force
-
-# If artist is unknown, leave artist blank in the CSV. The script will search by title.
-```
-
-Please be aware that template should be placed under human annotator's folder.
-
-Check `download_manifest.csv` after each run. Confirm that `youtube_title` and
-`youtube_url` match the intended songs before using the clips for CLAP embedding
-or human evaluation.
-
-Do not commit participant inputs, downloaded audio, WAV clips, `download_manifest.csv`,
-or the entire `result/` directory under each participant. These paths are ignored
-by `.gitignore`.
-
----
 
 ## 6) Naming and Reuse
 
