@@ -32,56 +32,6 @@ Implementation details are documented in [`implementation.md`](implementation.md
   1. `scripts/user_history_download.py`: CSV → YouTube download → **30 s WAV** under `src/eval/eval_phase_2/<participant>/clips_30s/`.
   2. `scripts/run_phase2_eval.py`: pool WAVs with **finetuned CLAP** → Music4All retrieval → profile + Suno prompt → Suno generation → **rerank by CLAP cosine similarity**. It writes under `src/eval/eval_phase_2/<participant>/result/` with the same layout as `outputs/recSongs/`, i.e. `result/<synthetic_user_id>/<run_id>/` (synthetic id is `phase2_<participant>`), saves `rerank_results.json`, and aliases top outputs as `song1` (higher cosine) and `song2`. The whole `result/` tree is **gitignored** (local only).
 
-### Use Your Own Playlist (Suno)
-
-Want to generate personalized Suno music from your own playlist? Use this Phase 2 flow:
-
-1. Create your participant folder and CSV:
-
-```text
-src/eval/eval_phase_2/<your_name>/manifest.csv
-```
-
-Use a CSV like this:
-
-```csv
-song_id,artist,title
-the_way,XXXTENTACION,The Way
-jocelyn_flores,XXXTENTACION,Jocelyn Flores
-whoa,XXXTENTACION,whoa
-7_years,Lukas Graham,7 Years
-a_sky_full_of_stars,Coldplay,A Sky Full of Stars
-a_lot,21 Savage,a lot
-```
-
-2. Download songs + build 30s WAV clips:
-
-```bash
-python scripts/user_history_download.py \
-  --participant-id <your_name> \
-  --input src/eval/eval_phase_2/<your_name>/manifest.csv
-```
-
-3. Generate profile/prompt and call Suno:
-
-```bash
-python scripts/run_phase2_eval.py \
-  --participant <your_name> \
-  --top-k 10
-```
-
-Outputs are written under:
-
-```text
-src/eval/eval_phase_2/<your_name>/result/
-```
-
-You can directly listen to:
-- `.../<run_id>/song1.mp3` (higher CLAP cosine similarity)
-- `.../<run_id>/song2.mp3`
-
----
-
 ## Project Structure (Current)
 
 ```text
@@ -258,6 +208,54 @@ python src/eval/run_eval.py \
   --encoder finetuned \
   --save-plot
 ```
+
+### Use Your Own Playlist (Suno)
+
+Want to generate personalized Suno music from your own playlist? Use this Phase 2 flow:
+
+1. Create your participant folder and CSV:
+
+```text
+src/eval/eval_phase_2/<your_name>/manifest.csv
+```
+
+Use a CSV like this:
+
+```csv
+song_id,artist,title
+the_way,XXXTENTACION,The Way
+jocelyn_flores,XXXTENTACION,Jocelyn Flores
+whoa,XXXTENTACION,whoa
+7_years,Lukas Graham,7 Years
+a_sky_full_of_stars,Coldplay,A Sky Full of Stars
+a_lot,21 Savage,a lot
+```
+
+2. Download songs + build 30s WAV clips:
+
+```bash
+python scripts/user_history_download.py \
+  --participant-id <your_name> \
+  --input src/eval/eval_phase_2/<your_name>/manifest.csv
+```
+
+3. Generate profile/prompt and call Suno:
+
+```bash
+python scripts/run_phase2_eval.py \
+  --participant <your_name> \
+  --top-k 10
+```
+
+Outputs are written under:
+
+```text
+src/eval/eval_phase_2/<your_name>/result/
+```
+
+You can directly listen to:
+- `.../<run_id>/song1.mp3` (higher CLAP cosine similarity)
+- `.../<run_id>/song2.mp3`
 
 ---
 
