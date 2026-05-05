@@ -30,7 +30,7 @@ Implementation details are documented in [`implementation.md`](implementation.md
 - **Phase 1 — Base vs fine-tuned retrieval**: text-to-music retrieval with **zeroshot (base)** vs **fine-tuned** CLAP embeddings; export blind clips and a researcher manifest via `scripts/run_phase1_eval.py` (default output: `outputs/phase1_eval/`).
 - **Phase 2 — Custom song list (recommendation study)**:
   1. `scripts/user_history_download.py`: CSV → YouTube download → **30 s WAV** under `src/eval/eval_phase_2/<participant>/clips_30s/`.
-  2. `scripts/run_phase2_eval.py`: pool WAVs with **finetuned CLAP** → Music4All retrieval → profile + Suno prompt → Suno generation; writes under `src/eval/eval_phase_2/<participant>/result/` with the same layout as `outputs/recSongs/`, i.e. `result/<synthetic_user_id>/<run_id>/` (synthetic id is `phase2_<participant>`). The whole `result/` tree is **gitignored** (local only).
+  2. `scripts/run_phase2_eval.py`: pool WAVs with **finetuned CLAP** → Music4All retrieval → profile + Suno prompt → Suno generation → **rerank by CLAP cosine similarity**. It writes under `src/eval/eval_phase_2/<participant>/result/` with the same layout as `outputs/recSongs/`, i.e. `result/<synthetic_user_id>/<run_id>/` (synthetic id is `phase2_<participant>`), saves `rerank_results.json`, and aliases top outputs as `song1` (higher cosine) and `song2`. The whole `result/` tree is **gitignored** (local only).
 
 ---
 
@@ -49,7 +49,7 @@ Gen4Rec/
 │   ├── build_music4all_aa_index.py
 │   ├── run_full_pipeline.py
 │   ├── run_phase1_eval.py             # phase 1: base vs finetuned retrieval export → outputs/phase1_eval
-│   ├── run_phase2_eval.py             # phase 2: WAV clips → profile/prompt → Suno → eval_phase_2/<id>/result/
+│   ├── run_phase2_eval.py             # phase 2: WAV clips → profile/prompt → Suno + rerank → eval_phase_2/<id>/result/
 │   └── user_history_download.py       # phase 2: custom song list → WAV under src/eval/eval_phase_2/<id>/
 ├── src/
 │   ├── data/
