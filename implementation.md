@@ -120,12 +120,16 @@ Main outputs:
 - Input: prompt JSON
 - Uses generation model `chirp-v4-5` (default)
 - Supports repeated calls (`num_calls`) and bounded parallelism (`max_concurrency`)
-- Writes run artifacts under `outputs/recSongs/<user>/<run>/`:
+- Default artifact layout: `outputs/recSongs/<user>/<run>/` with:
   - `prompt_input.json`
   - `generation_spec.json`
   - `run_manifest.json`
   - `report.md`
   - `audio/`
+- Optional `outputs_root` (custom base instead of `outputs/recSongs`); layout stays
+  `outputs_root/<user>/<run>/`. Phase 2 script sets `outputs_root` to
+  `src/eval/eval_phase_2/<participant>/result` and passes `user_id=phase2_<participant>`,
+  so Suno artifacts are under `result/phase2_<participant>/<run_id>/`.
 
 ### Rerank (`src/generate/rerank.py`)
 
@@ -204,11 +208,42 @@ Outputs:
 src/eval/eval_phase_2/<participant_id>/
   manifest.csv              # local participant input; do not commit
   download_manifest.csv     # matched YouTube metadata and processing status
-  raw/                      # downloaded mp3 files
-  clips_30s/                # 30-second wav clips
+  raw/                        # downloaded mp3 files
+  clips_30s/                  # 30-second wav clips
 ```
 
-Useful options:
+### Phase 2 end-to-end: WAV → Music4All → profile → Suno
+
+`scripts/run_phase2_eval.py` reads `clips_30s/*.wav`, averages **finetuned** CLAP
+embeddings into one synthetic user vector (`phase2_<participant>`), runs the
+same retrieval + LLM profile/prompt path as the main app (via
+`build_or_load_profile_pipeline`), then calls `run_generation_pipeline` with
+`outputs_root = src/eval/eval_phase_2/<participant>/result` (same nested layout as
+`outputs/recSongs/<user>/<run>/`). Suno artifacts land at:
+
+```text
+src/eval/eval_phase_2/<participant>/result/
+  wav_embedding_meta.json
+  profile_retrieval_raw.json   # copies of pipeline outputs for convenience
+  profile_summary.json
+  music_prompt.json
+  phase2_generation_meta.json
+  _phase2_emb/                 # temporary user .npy used for retrieval
+  phase2_<participant>/
+    <run_id>/                  # Suno run: prompt_input, generation_spec, audio/, run_manifest.json, report.md
+```
+
+Example:
+
+```bash
+conda run -n gen4rec python scripts/run_phase2_eval.py --participant Tony --top-k 10
+```
+
+`run_phase2_eval.py` also supports `--clips-dir`, `--result-dir`, `--encoder`,
+`--openai-model`, `--generation-model`, `--num-calls`, `--max-concurrency`,
+`--negative-prompt`, and `--rebuild-profile`.
+
+### `user_history_download.py` options
 
 ```bash
 # Re-download and recreate clips even if files already exist.
@@ -226,13 +261,9 @@ Check `download_manifest.csv` after each run. Confirm that `youtube_title` and
 `youtube_url` match the intended songs before using the clips for CLAP embedding
 or human evaluation.
 
-Git hygiene:
-
-- Commit the code and template:
-  - `scripts/user_history_download.py`
-  - `src/eval/eval_phase_2/manifest_template.csv`
-- Do not commit participant inputs, downloaded audio, generated clips, or
-  `download_manifest.csv`. These are ignored by `.gitignore`.
+Do not commit participant inputs, downloaded audio, WAV clips, `download_manifest.csv`,
+or the entire `result/` directory under each participant. These paths are ignored
+by `.gitignore`.
 
 ---
 
