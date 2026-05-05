@@ -1,5 +1,7 @@
 ## Human Retrieval Evaluation: Base CLAP vs Fine-tuned CLAP
 
+**Automation in this repo:** export blind clips with `scripts/run_phase1_eval.py` (default output `outputs/phase1_eval/`). Small text copies of `manifest.json` / `participant_instructions.txt` may live under `src/eval/eval_phase_1/` for reference; audio stays local.
+
 We conducted two rounds of lightweight human preference evaluation to compare the retrieval quality of the base CLAP model and the fine-tuned CLAP model.
 
 For each text prompt, we retrieved two audio clips using the base CLAP model and two audio clips using the fine-tuned CLAP model. The four clips were then shuffled and renamed with blind filenames, such as `p01_clip01.mp3`, `p01_clip02.mp3`, `p01_clip03.mp3`, and `p01_clip04.mp3`. Participants only saw the prompt text and the blinded clip names, without knowing which model retrieved each clip.

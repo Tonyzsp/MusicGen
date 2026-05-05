@@ -25,10 +25,12 @@ The project runs in six main stages:
 
 Implementation details are documented in [`implementation.md`](implementation.md).
 
-### Human evaluation phases 
+### Human evaluation phases
 
 - **Phase 1 — Base vs fine-tuned retrieval**: text-to-music retrieval with **zeroshot (base)** vs **fine-tuned** CLAP embeddings; export blind clips and a researcher manifest via `scripts/run_phase1_eval.py` (default output: `outputs/phase1_eval/`).
-- **Phase 2 — Custom song list (recommendation study)**: participants bring a **custom CSV song list**; the repo downloads audio and builds **30 s WAV** clips under `src/eval/eval_phase_2/` for the personalized recommendation / generation pipeline (`scripts/user_history_download.py`).
+- **Phase 2 — Custom song list (recommendation study)**:
+  1. `scripts/user_history_download.py`: CSV → YouTube download → **30 s WAV** under `src/eval/eval_phase_2/<participant>/clips_30s/`.
+  2. `scripts/run_phase2_eval.py`: pool WAVs with **finetuned CLAP** → Music4All retrieval → profile + Suno prompt → Suno generation; writes under `src/eval/eval_phase_2/<participant>/result/` with the same layout as `outputs/recSongs/`, i.e. `result/<synthetic_user_id>/<run_id>/` (synthetic id is `phase2_<participant>`). The whole `result/` tree is **gitignored** (local only).
 
 ---
 
@@ -47,7 +49,8 @@ Gen4Rec/
 │   ├── build_music4all_aa_index.py
 │   ├── run_full_pipeline.py
 │   ├── run_phase1_eval.py             # phase 1: base vs finetuned retrieval export → outputs/phase1_eval
-│   └── user_history_download.py       # phase 2: custom song list → WAV under src/eval/eval_phase_2
+│   ├── run_phase2_eval.py             # phase 2: WAV clips → profile/prompt → Suno → eval_phase_2/<id>/result/
+│   └── user_history_download.py       # phase 2: custom song list → WAV under src/eval/eval_phase_2/<id>/
 ├── src/
 │   ├── data/
 │   ├── embed/
@@ -57,9 +60,9 @@ Gen4Rec/
 │       ├── eval_phase_1/              # phase 1 retrieval study: bundled researcher manifest + participant sheet
 │       │   ├── manifest.json
 │       │   └── participant_instructions.txt
-│       ├── eval_phase_2/              # phase 2 custom-list study: WAV template + bundles (manifest_template.csv)
+│       ├── eval_phase_2/              # phase 2: CSV template, per-participant WAVs, local result/ (gitignored)
 │       │   ├── manifest_template.csv
-│       │   └── eason_suno_results/    # example bundled outputs / docs
+│       │   ├── <participant>/         # e.g. Tony: manifest.csv, raw/, clips_30s/, result/ (local)
 │       ├── run_eval.py
 │       ├── clap_audio.py
 │       ├── data.py
@@ -93,7 +96,7 @@ Gen4Rec/
 └── .gitignore
 ```
 
-Note: dataset CSV/audio files and model checkpoints are intentionally not stored in git due size. Each teammate needs to download them locally.
+Note: dataset CSV/audio files and model checkpoints are intentionally not stored in git due size. Each teammate needs to download them locally. Phase 2 per-participant folders (`raw/`, `clips_30s/`, `manifest.csv`, `download_manifest.csv`, `result/`) are also gitignored under `src/eval/eval_phase_2/`; commit only code and `manifest_template.csv` (plus bundled example dirs like `eason_suno_results/`).
 
 ---
 
