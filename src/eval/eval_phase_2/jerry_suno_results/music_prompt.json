@@ -1,0 +1,99 @@
+{
+  "user_id": "phase2_jerry",
+  "input_summary": {
+    "user_id": "phase2_jerry",
+    "source_top_k": 10,
+    "source_song_count": 10,
+    "top_genres": [
+      "experimental",
+      "rock",
+      "metal",
+      "post-rock",
+      "industrial rock",
+      "industrial",
+      "ambient",
+      "freak folk"
+    ],
+    "top_tags": [
+      "experimental",
+      "instrumental",
+      "rock",
+      "metal",
+      "post-rock",
+      "industrial rock",
+      "industrial",
+      "ambient",
+      "indie",
+      "freak folk"
+    ],
+    "representative_artists": [
+      "Nine Inch Nails",
+      "Animal Collective",
+      "Död Mark",
+      "Queen",
+      "Siouxsie and the Banshees",
+      "The Claypool Lennon Delirium"
+    ],
+    "representative_tracks": [
+      {
+        "artist": "Nine Inch Nails",
+        "song": "Ripe (With Decay)"
+      },
+      {
+        "artist": "Animal Collective",
+        "song": "Airpipe (To a New Transition)"
+      },
+      {
+        "artist": "Död Mark",
+        "song": "Drabbad av sjukdom"
+      },
+      {
+        "artist": "Queen",
+        "song": "Procession"
+      },
+      {
+        "artist": "Siouxsie and the Banshees",
+        "song": "Pure"
+      }
+    ],
+    "language_profile": {
+      "language_counts": {
+        "INTRUMENTAL": 5,
+        "en": 4,
+        "sv": 1
+      },
+      "instrumental_count": 5,
+      "vocal_or_language_count": 5,
+      "unknown_count": 0,
+      "instrumental_ratio": 0.5,
+      "vocal_or_language_ratio": 0.5,
+      "dominant_mode": "mixed"
+    },
+    "audio_profile": {
+      "danceability_mean": 0.5,
+      "energy_mean": 0.328,
+      "valence_mean": 0.262,
+      "tempo_mean": 105.752
+    },
+    "mood_summary": [
+      "soft",
+      "balanced",
+      "bittersweet",
+      "reflective",
+      "mid-tempo"
+    ],
+    "rule_based_profile_paragraph": "This listener gravitates toward experimental, rock, metal, post-rock, with recurring traits such as experimental, instrumental, rock, metal, post-rock. Their taste leans toward soft, balanced, bittersweet, reflective, often centered on expressive vocals and restrained arrangements. The listener might enjoy artists such as Nine Inch Nails, Animal Collective, Död Mark, Queen, while their broader preference reflects emotionally detailed, intimate music."
+  },
+  "profile_paragraph": "This listener is drawn to adventurous rock at the edge of genre: experimental, industrial, post-rock, metal, ambient, and freak folk, with a strong split between instrumental passages and vocal-led tracks. The overall feel is moody and reflective rather than aggressive, favoring mid-tempo pacing, muted dynamics, and a bittersweet atmosphere over high-energy release. They seem to appreciate textured production, shifting arrangements, and songs that balance heft with detail, from abrasive industrial grit to spacious, cinematic build-ups. They may be especially responsive to artists such as Nine Inch Nails, Animal Collective, Död Mark, Queen, and Siouxsie and the Banshees for their contrast of tension, drama, and experimentation.",
+  "suno_generation_prompt": "Experimental post-rock/industrial rock with ambient textures and freak-folk details, mid-tempo, moody and bittersweet. Mix instrumental sections with restrained male vocal lines; layered guitars, cracked synths, distant bass, brushed drums, and dense but airy builds. Cinematic, dark, reflective, 105 BPM. Avoid upbeat pop hooks and polished brightness.",
+  "style_keywords": [
+    "experimental rock",
+    "industrial grit",
+    "post-rock build",
+    "ambient haze",
+    "bittersweet",
+    "mid-tempo",
+    "textured production",
+    "mixed vocals"
+  ]
+}
