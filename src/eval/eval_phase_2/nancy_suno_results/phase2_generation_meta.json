@@ -1,0 +1,31 @@
+{
+  "run_id": "20260505T143847Z-phase2_Nancy-suno",
+  "manifest_path": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\src\\eval\\eval_phase_2\\Nancy\\result\\phase2_Nancy\\20260505T143847Z-phase2_Nancy-suno\\run_manifest.json",
+  "generation_artifacts_root": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\src\\eval\\eval_phase_2\\Nancy\\result\\phase2_Nancy\\20260505T143847Z-phase2_Nancy-suno",
+  "rerank_output_path": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\src\\eval\\eval_phase_2\\Nancy\\result\\phase2_Nancy\\20260505T143847Z-phase2_Nancy-suno\\rerank_results.json",
+  "rerank_top_k": 2,
+  "song_aliases": [
+    {
+      "alias": "song1",
+      "source_path": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\src\\eval\\eval_phase_2\\Nancy\\result\\phase2_Nancy\\20260505T143847Z-phase2_Nancy-suno\\audio\\call_01\\phase2_nancy_rec_song_variant_02.mp3",
+      "clap_cosine_score": 0.8369479775428772,
+      "copied_mp3": true,
+      "copied_json": true,
+      "copied_lyrics": true
+    },
+    {
+      "alias": "song2",
+      "source_path": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\src\\eval\\eval_phase_2\\Nancy\\result\\phase2_Nancy\\20260505T143847Z-phase2_Nancy-suno\\audio\\call_01\\phase2_nancy_rec_song_variant_01.mp3",
+      "clap_cosine_score": 0.8012254238128662,
+      "copied_mp3": true,
+      "copied_json": true,
+      "copied_lyrics": true
+    }
+  ],
+  "profile_cache_paths": {
+    "raw_profile": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\outputs\\profiles\\phase2_Nancy__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini.json",
+    "summary": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\outputs\\profiles\\phase2_Nancy__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini_topk_summary.json",
+    "prompt": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\outputs\\profiles\\phase2_Nancy__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini_prompt.json",
+    "validation": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\outputs\\profiles\\phase2_Nancy__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini_validation.json"
+  }
+}

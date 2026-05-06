@@ -1,0 +1,98 @@
+{
+  "user_id": "phase2_Nancy",
+  "input_summary": {
+    "user_id": "phase2_Nancy",
+    "source_top_k": 10,
+    "source_song_count": 10,
+    "top_genres": [
+      "rap",
+      "emo",
+      "hip hop",
+      "experimental",
+      "emo rap",
+      "death metal",
+      "glitch hop",
+      "lo-fi"
+    ],
+    "top_tags": [
+      "rap",
+      "hip-hop",
+      "emo",
+      "cloud rap",
+      "hip hop",
+      "experimental",
+      "emo rap",
+      "post-emo",
+      "post emo",
+      "emotional trap"
+    ],
+    "representative_artists": [
+      "Lil Peep",
+      "BRENNAN SAVAGE",
+      "Sybyr",
+      "JPEGMAFIA",
+      "Joji",
+      "Мы"
+    ],
+    "representative_tracks": [
+      {
+        "artist": "BRENNAN SAVAGE",
+        "song": "Bulletproof"
+      },
+      {
+        "artist": "Sybyr",
+        "song": "101Dalmatians"
+      },
+      {
+        "artist": "Lil Peep",
+        "song": "White Girl"
+      },
+      {
+        "artist": "Lil Peep",
+        "song": "Better Off (Dying)"
+      },
+      {
+        "artist": "JPEGMAFIA",
+        "song": "Rainbow Six"
+      }
+    ],
+    "language_profile": {
+      "language_counts": {
+        "en": 8,
+        "INTRUMENTAL": 1,
+        "ru": 1
+      },
+      "instrumental_count": 1,
+      "vocal_or_language_count": 9,
+      "unknown_count": 0,
+      "instrumental_ratio": 0.1,
+      "vocal_or_language_ratio": 0.9,
+      "dominant_mode": "vocal"
+    },
+    "audio_profile": {
+      "danceability_mean": 0.584,
+      "energy_mean": 0.629,
+      "valence_mean": 0.298,
+      "tempo_mean": 120.82
+    },
+    "mood_summary": [
+      "energetic",
+      "driving",
+      "bittersweet",
+      "reflective",
+      "mid-tempo"
+    ],
+    "rule_based_profile_paragraph": "This listener gravitates toward rap, emo, hip hop, experimental, with recurring traits such as rap, hip-hop, emo, cloud rap, hip hop. Their taste leans toward energetic, driving, bittersweet, reflective, often centered on expressive vocals and restrained arrangements. The listener might enjoy artists such as Lil Peep, BRENNAN SAVAGE, Sybyr, JPEGMAFIA, while their broader preference reflects emotionally detailed, intimate music."
+  },
+  "profile_paragraph": "This listener is drawn to a dark, emotionally charged blend of rap, emo rap, cloud rap, and experimental hip hop, with occasional edges of lo-fi texture and heavier, more abrasive energy. The overall taste leans toward bittersweet, reflective, and driving tracks that pair intimate, vulnerable vocals with sparse or glitchy production, then build into hard-hitting, cathartic peaks. They may be drawn to artists such as Lil Peep, BRENNAN SAVAGE, Sybyr, JPEGMAFIA, and Joji, especially when songs balance melodic sadness with restless rhythmic momentum and an underground, rough-edged aesthetic.",
+  "suno_generation_prompt": "Vocal-led emo rap / experimental hip hop, 120 BPM mid-tempo. Melodic, emotionally raw vocals over sparse trap drums, hazy pads, distorted 808s, glitchy textures, and occasional lo-fi grit. Bittersweet, reflective, driving energy; intimate verses with a cathartic hook, dense but not overproduced. Avoid bright pop polish and cheerful tones.",
+  "style_keywords": [
+    "emo rap",
+    "experimental hip hop",
+    "cloud rap",
+    "bittersweet",
+    "glitchy drums",
+    "distorted 808s",
+    "lo-fi grit"
+  ]
+}
