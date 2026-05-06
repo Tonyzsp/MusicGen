@@ -1,0 +1,31 @@
+{
+  "run_id": "20260505T160437Z-phase2_jerry-suno",
+  "manifest_path": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/src/eval/eval_phase_2/jerry/result/phase2_jerry/20260505T160437Z-phase2_jerry-suno/run_manifest.json",
+  "generation_artifacts_root": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/src/eval/eval_phase_2/jerry/result/phase2_jerry/20260505T160437Z-phase2_jerry-suno",
+  "rerank_output_path": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/src/eval/eval_phase_2/jerry/result/phase2_jerry/20260505T160437Z-phase2_jerry-suno/rerank_results.json",
+  "rerank_top_k": 2,
+  "song_aliases": [
+    {
+      "alias": "song1",
+      "source_path": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/src/eval/eval_phase_2/jerry/result/phase2_jerry/20260505T160437Z-phase2_jerry-suno/audio/call_04/phase2_jerry_rec_song_variant_02.mp3",
+      "clap_cosine_score": 0.7886401414871216,
+      "copied_mp3": true,
+      "copied_json": true,
+      "copied_lyrics": true
+    },
+    {
+      "alias": "song2",
+      "source_path": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/src/eval/eval_phase_2/jerry/result/phase2_jerry/20260505T160437Z-phase2_jerry-suno/audio/call_05/phase2_jerry_rec_song_variant_01.mp3",
+      "clap_cosine_score": 0.7685108780860901,
+      "copied_mp3": true,
+      "copied_json": true,
+      "copied_lyrics": true
+    }
+  ],
+  "profile_cache_paths": {
+    "raw_profile": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/outputs/profiles/phase2_jerry__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini.json",
+    "summary": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/outputs/profiles/phase2_jerry__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini_topk_summary.json",
+    "prompt": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/outputs/profiles/phase2_jerry__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini_prompt.json",
+    "validation": "/Users/itsnotjerryh/Desktop/Github/Gen4Rec/outputs/profiles/phase2_jerry__evphase2_wav_mean_tk10_msnone_ex0_omgpt-5.4-mini_validation.json"
+  }
+}
