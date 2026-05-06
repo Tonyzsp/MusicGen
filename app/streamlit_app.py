@@ -909,7 +909,7 @@ def _load_json_file(path: Path) -> dict[str, object] | None:
 
 
 def _render_phase2_eval_results_page() -> None:
-    st.markdown("## Phase 2 Human Eval Results")
+    st.markdown("## phase2 eval debug")
     st.caption(
         "Inspect real-user Phase 2 runs from `src/eval/eval_phase_2/<participant>/result`: "
         "input clips, retrieved profile, Suno candidates, and reranked final songs."
@@ -921,7 +921,7 @@ def _render_phase2_eval_results_page() -> None:
         return
 
     with st.sidebar:
-        st.markdown("### Phase 2 Eval Results")
+        st.markdown("### phase2 eval debug")
         participant = st.selectbox("Participant", participants, index=0)
         run_dir_options = get_phase2_eval_run_dirs(participant)
         if not run_dir_options:
@@ -1153,7 +1153,7 @@ def main() -> None:
             options=[
                 "Embedding Retrieval (Base vs Finetuned)",
                 "Generate AI Song",
-                "Phase 2 Human Eval Results",
+                "phase2 eval debug",
             ],
             index=0,
             horizontal=False,
@@ -1161,7 +1161,7 @@ def main() -> None:
         )
         show_query_compare = app_mode == "Embedding Retrieval (Base vs Finetuned)"
         show_generate_page = app_mode == "Generate AI Song"
-        show_phase2_eval_results = app_mode == "Phase 2 Human Eval Results"
+        show_phase2_eval_results = app_mode == "phase2 eval debug"
         generate_section = "Overview"
         if show_generate_page:
             generate_section = st.radio(

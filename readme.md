@@ -314,6 +314,22 @@ streamlit run app/streamlit_app.py
 
 ---
 
+## Data Sources
+
+This project uses three related music datasets:
+
+- **Music4All**: the main dataset this project builds on. We use its listening history, track metadata, genres/tags, audio features, and local audio files to build user embeddings, retrieve similar tracks, create listener profiles, and evaluate generated recommendations.
+- **Music4All-Onion**: an extended track-level multimodal dataset related to Music4All. It is not the main dataset used by the core pipeline, but it provides the bridge used by Music4All A+A to map artist/album metadata back to Music4All-style song IDs.
+- **Music4All A+A**: an artist- and album-level extension. We use it as an optional enrichment layer for the Streamlit frontend, adding album covers, artist images, artist/album genres, Last.fm tags/links, release dates, listener/play counts, and other structured context.
+
+In short, the recommendation and generation pipeline is built on **Music4All**. **Music4All A+A** is used only as an additional artist/album information source to make retrieval and profile views more interpretable and visually informative.
+
+---
+
 ## Citation
 
 Santana, I. A. P., Pinhelli, F., Donini, J., Catharin, L., Mangolin, R. B., da Costa, Y. M. G., Feltrim, V. D., & Domingues, M. A. (2020). *Music4All: A New Music Database and its Applications*. In *Proceedings of the 27th International Conference on Systems, Signals and Image Processing (IWSSIP 2020)* (pp. 1-6). Niterói, Brazil.
+
+Wu, Y., Chen, K., Zhang, T., Hui, Y., Berg-Kirkpatrick, T., & Dubnov, S. (2023). *Large-scale Contrastive Language-Audio Pretraining with Feature Fusion and Keyword-to-Caption Augmentation*. In *ICASSP 2023 - IEEE International Conference on Acoustics, Speech and Signal Processing*.
+
+This project uses the LAION-CLAP checkpoint [`music_audioset_epoch_15_esc_90.14.pt`](https://huggingface.co/lukewys/laion_clap/blob/main/music_audioset_epoch_15_esc_90.14.pt) from the `lukewys/laion_clap` Hugging Face repository.
