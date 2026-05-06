@@ -2,7 +2,7 @@
 
 ## Overview
 
-This user study evaluates the effectiveness of our personalized music generation pipeline using a real user (Eason). The evaluation focuses on both automatic reranking results and human judgment.
+This is the very first user study we've conducted in Milestone 2, using the previous pipeline. But the result is still useful. This user study evaluates the effectiveness of our personalized music generation pipeline using a real user (Eason). The evaluation focuses on both automatic reranking results and human judgment.
 
 ---
 
@@ -86,7 +86,7 @@ We proceed with the successful run:
 
 ## Reranking vs Human Preference
 
-- **Pipeline-selected track (via CLAP reranking):** Track B  
+- **Pipeline-selected track (via CLAP reranking):** Track B (cosine score 0.22 > 0.19)
 - **User-selected favorite:** Track B  
 
 ✔ The reranking result is consistent with human preference
