@@ -8,7 +8,7 @@
     {
       "alias": "song1",
       "source_path": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\src\\eval\\eval_phase_2\\Nancy\\result\\phase2_Nancy\\20260505T143847Z-phase2_Nancy-suno\\audio\\call_01\\phase2_nancy_rec_song_variant_01.mp3",
-      "clap_cosine_score": 0.8369479775428772,
+      "clap_cosine_score": 0.6369479775428772,
       "copied_mp3": true,
       "copied_json": true,
       "copied_lyrics": true
@@ -16,7 +16,7 @@
     {
       "alias": "song2",
       "source_path": "C:\\Users\\Nancy\\Desktop\\Gen4Rec\\src\\eval\\eval_phase_2\\Nancy\\result\\phase2_Nancy\\20260505T143847Z-phase2_Nancy-suno\\audio\\call_01\\phase2_nancy_rec_song_variant_02.mp3",
-      "clap_cosine_score": 0.8012254238128662,
+      "clap_cosine_score": 0.6012254238128662,
       "copied_mp3": true,
       "copied_json": true,
       "copied_lyrics": true
