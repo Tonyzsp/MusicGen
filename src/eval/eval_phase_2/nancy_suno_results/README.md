@@ -4,7 +4,7 @@
 
 This user study evaluates the effectiveness of our personalized music generation pipeline using a real user (Nancy). The evaluation focuses on whether the system can capture Nancy’s listening preferences from recent listening history, generate a meaningful user profile and Suno prompt, and produce personalized music that aligns with human judgment.
 
-Nancy’s case is especially useful because the generated profile partially captured the emotional and vocal-centered side of her taste, but also revealed an important limitation: the profile leaned too heavily toward dark emo rap and experimental hip hop, while the user’s actual preference was softer, warmer, more romantic, and more atmospheric.
+Nancy’s case is especially useful because the generated profile partially captured the emotional and vocal-centered side of her taste, but also revealed an important limitation: the profile leaned too heavily toward dark emo rap and experimental hip hop, while the user’s actual preference was softer, warmer, more romantic, and more atmospheric. In this case, CLAP-based reranking was consistent with Nancy’s human preference, since the top-ranked song was also the user-selected favorite.
 
 ---
 
@@ -21,6 +21,7 @@ We also collect qualitative feedback on:
 - Accuracy of the generated user profile
 - Quality of the personalized Suno prompt
 - Whether the generated songs match the user’s emotional and atmospheric preferences
+- Whether CLAP-based reranking aligns with the user’s final preference
 
 ---
 
@@ -146,9 +147,54 @@ This feedback suggests that the profile generation step captured the broad emoti
 
 ## Music Generation
 
-Using the personalized Suno prompt, we generated two songs for Nancy.
+Using the personalized Suno prompt, music was generated for Nancy.
 
-Both songs were evaluated by the user based on preference match, sound quality, and creativity.
+The final evaluation used the top two reranked songs selected by the fine-tuned CLAP model.
+
+- Run ID: `20260505T143847Z-phase2_Nancy-suno`
+- Rerank Top-K: 2
+- Manifest path:  
+  `C:\Users\Nancy\Desktop\Gen4Rec\src\eval\eval_phase_2\Nancy\result\phase2_Nancy\20260505T143847Z-phase2_Nancy-suno\run_manifest.json`
+- Generation artifacts root:  
+  `C:\Users\Nancy\Desktop\Gen4Rec\src\eval\eval_phase_2\Nancy\result\phase2_Nancy\20260505T143847Z-phase2_Nancy-suno`
+- Rerank output path:  
+  `C:\Users\Nancy\Desktop\Gen4Rec\src\eval\eval_phase_2\Nancy\result\phase2_Nancy\20260505T143847Z-phase2_Nancy-suno\rerank_results.json`
+
+---
+
+## CLAP Reranking Results
+
+| Rank | Track | CLAP Cosine Score |
+|------|-------|-------------------|
+| Top 1 | Track A / song1 | 0.6369 |
+| Top 2 | Track B / song2 | 0.6012 |
+
+---
+
+## Generated Tracks
+
+### Track A: song1
+
+- CLAP cosine score: **0.6369**
+- Local file:  
+  `C:\Users\Nancy\Desktop\Gen4Rec\src\eval\eval_phase_2\Nancy\result\phase2_Nancy\20260505T143847Z-phase2_Nancy-suno\audio\call_01\phase2_nancy_rec_song_variant_01.mp3`
+
+### Track B: song2
+
+- CLAP cosine score: **0.6012**
+- Local file:  
+  `C:\Users\Nancy\Desktop\Gen4Rec\src\eval\eval_phase_2\Nancy\result\phase2_Nancy\20260505T143847Z-phase2_Nancy-suno\audio\call_01\phase2_nancy_rec_song_variant_02.mp3`
+
+---
+
+## Reranking vs Human Preference
+
+- **Pipeline-selected track via CLAP reranking:** Track A / song1  
+- **User-selected favorite:** Track A / First Song  
+
+The CLAP reranking result is consistent with Nancy’s human preference in this case.
+
+Track A received the higher CLAP cosine score and was also the user’s preferred song. This suggests that the fine-tuned CLAP reranking successfully identified the candidate that better matched Nancy’s recent listening profile, even though the profile itself only partially captured her intended emotional style.
 
 ---
 
@@ -156,8 +202,8 @@ Both songs were evaluated by the user based on preference match, sound quality, 
 
 | Track | Preference Match | Sound Quality | Creativity |
 |------|------------------|--------------|-----------|
-| Track A | 5 | 5 | 4 |
-| Track B | 3 | 5 | 5 |
+| Track A / song1 | 5 | 5 | 4 |
+| Track B / song2 | 3 | 5 | 5 |
 
 ---
 
@@ -167,6 +213,8 @@ Both songs were evaluated by the user based on preference match, sound quality, 
 
 This response indicates that both generated songs achieved strong sound quality, but preference alignment differed. Track A was preferred because it better matched Nancy’s desired atmosphere and style, while Track B was considered more creative due to its more noticeable changes in listening experience.
 
+Track A also received the higher CLAP cosine score, which aligns with Nancy’s preference judgment. However, Track B’s higher creativity score suggests that CLAP similarity may be better at identifying preference alignment than perceived novelty.
+
 ---
 
 ## Key Findings
@@ -175,6 +223,8 @@ This response indicates that both generated songs achieved strong sound quality,
 
 - The generated profile captured some emotional and vocal-centered qualities of Nancy’s listening history
 - The system correctly identified bittersweet mood, reflective energy, and intimate vocals as important preference signals
+- CLAP-based reranking aligned with Nancy’s human preference
+- Track A received the highest CLAP cosine score and was also the user-selected favorite
 - Both generated tracks received perfect sound quality scores
 - Track A achieved a perfect preference match score, suggesting that the generation step still produced a highly aligned candidate
 - Track B showed stronger perceived creativity, indicating that the model can generate more varied musical outputs from the same personalized direction
@@ -187,6 +237,7 @@ This response indicates that both generated songs achieved strong sound quality,
 - The system overemphasized dark emo rap, experimental hip hop, distorted 808s, and glitchy textures
 - The generated profile missed the softer, warmer, and more romantic love-song feeling that Nancy associated with her actual input songs
 - Genre and tag-based summaries may overweight prominent labels while underrepresenting emotional nuance
+- Although CLAP reranking matched human preference, the score difference between the top two tracks was relatively small, so human validation remains important
 - Future prompt generation should better distinguish between “melancholic/dark” and “romantic/atmospheric” emotional styles
 
 ---
@@ -197,5 +248,6 @@ This response indicates that both generated songs achieved strong sound quality,
 - The input listening history was mostly vocal-based, with a **0.9 vocal/language ratio**
 - The average tempo of the input songs was around **121 BPM**, supporting the mid-tempo prompt direction
 - The generated prompt focused on vocal-led emo rap, experimental hip hop, glitchy textures, distorted 808s, and bittersweet emotional delivery
+- The final recommendation selected by CLAP reranking was also the user’s preferred song
 - This case shows that personalized music generation can produce high-quality and preference-aligned outputs even when the profile itself only partially matches the user’s intended emotional style
 - Nancy’s feedback highlights the importance of capturing atmosphere-level distinctions, especially between darker emo-rap aesthetics and softer romantic emotional preferences
