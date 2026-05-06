@@ -22,8 +22,14 @@ from app.services.artifact_service import (
     PROFILES_ROOT,
     ProfileArtifacts,
     load_eval_artifacts,
+    load_generation_run,
     load_profile_artifacts,
     read_binary_file,
+)
+from app.services.custom_playlist_service import (
+    clip_paths_in_upload_order,
+    run_custom_playlist_pipeline,
+    write_wav_files_to_clips_dir,
 )
 from app.services.pipeline_service import (
     build_user_embedding_variant,
@@ -644,6 +650,175 @@ def _render_retrieval_snapshot(profile_artifacts: ProfileArtifacts) -> None:
         st.info("No songs in retrieval payload.")
 
 
+def _render_custom_playlist_page() -> None:
+    st.markdown("## Custom WAV → AI music")
+    st.caption(
+        "Upload one or more **.wav** files only (RIFF/WAVE). Listen to them below, then run the pipeline: "
+        "pool CLAP embeddings → retrieval + profile → Suno → rerank. **No CSV.** Generated MP3s appear at the bottom."
+    )
+    work_root = REPO_ROOT / "outputs" / "custom_playlist_streamlit"
+
+    with st.sidebar:
+        st.subheader("Custom WAV")
+        slug_raw = st.text_input(
+            "Playlist / run label",
+            value="my_playlist",
+            help="Sanitized for folder names and synthetic user id.",
+        )
+        safe_slug = sanitize_segment(str(slug_raw).strip()) or "my_playlist"
+        st.caption(f"Output folder: `outputs/custom_playlist_streamlit/{safe_slug}/`")
+        encoder = st.selectbox("CLAP encoder (WAV pool)", ["finetuned", "zeroshot", "auto"], index=0)
+        top_k = st.number_input("Retrieval top-k", min_value=5, max_value=100, value=10, step=1)
+        min_sim_on = st.checkbox("Min similarity filter", value=False)
+        min_similarity: float | None = None
+        if min_sim_on:
+            min_similarity = float(
+                st.number_input("Min similarity", min_value=-1.0, max_value=1.0, value=0.2, step=0.05)
+            )
+        openai_model = st.text_input("OpenAI model", value="gpt-5.4-mini")
+        rebuild_profile = st.checkbox("Rebuild profile (ignore cache)", value=False)
+        st.markdown("### Suno + rerank")
+        generation_model = st.text_input("Generation model", value="chirp-v4-5")
+        num_calls = st.number_input("API calls", min_value=1, max_value=10, value=1, step=1)
+        max_concurrency = st.number_input("Max concurrency", min_value=1, max_value=5, value=1, step=1)
+        negative_prompt = st.text_input("Negative prompt", value="")
+        lyrics = st.text_area("Lyrics / cues (optional)", value="", height=80)
+        tempo_hint_bpm = st.number_input("Tempo hint (BPM)", min_value=0, max_value=300, value=0, step=1)
+        duration_hint_seconds = st.number_input("Duration hint (s)", min_value=0, max_value=600, value=0, step=1)
+        rerank_top_k = st.number_input("Rerank keep top-k", min_value=1, max_value=10, value=2, step=1)
+        rerank_encoder = st.selectbox("Rerank encoder", ["finetuned", "zeroshot", "auto"], index=0)
+        div_text = st.text_input("Diversity threshold (optional)", value="")
+
+    uploaded_wavs = st.file_uploader(
+        "WAV files (.wav only)",
+        type=["wav"],
+        accept_multiple_files=True,
+        help="Only RIFF/WAVE .wav files. Order is preserved for embedding pooling (use unique filenames).",
+    ) or []
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        load_clicked = st.button("Save clips & preview", use_container_width=True)
+    with col_b:
+        run_clicked = st.button("Generate music", type="primary", use_container_width=True)
+
+    if load_clicked:
+        if not uploaded_wavs:
+            st.warning("Please upload at least one .wav file.")
+            return
+        wav_payloads: list[tuple[str, bytes]] = []
+        for uf in uploaded_wavs:
+            if Path(uf.name).suffix.lower() != ".wav":
+                st.error(f"Only .wav files are allowed: {uf.name!r}")
+                return
+            wav_payloads.append((uf.name, uf.getvalue()))
+        try:
+            clips_dir = work_root / safe_slug / "clips_30s"
+            write_wav_files_to_clips_dir(clips_dir, wav_payloads, clear=True)
+            wav_paths = clip_paths_in_upload_order(clips_dir, wav_payloads)
+            preview = [
+                {"#": i, "filename": p.name, "wav_path": str(p)}
+                for i, p in enumerate(wav_paths, start=1)
+            ]
+        except Exception as exc:
+            st.error(str(exc))
+            return
+        st.session_state["custom_pl_slug"] = safe_slug
+        st.session_state["custom_pl_paths"] = [str(p) for p in wav_paths]
+        st.session_state["custom_pl_preview"] = preview
+        st.success(f"Saved {len(preview)} clip(s). You can play them below.")
+
+    if run_clicked:
+        paths_raw = st.session_state.get("custom_pl_paths")
+        use_slug = st.session_state.get("custom_pl_slug") or safe_slug
+        if not paths_raw:
+            st.warning('Click "Save clips & preview" first after uploading your .wav files.')
+            return
+        wav_paths_ordered = [Path(p) for p in paths_raw]
+        for p in wav_paths_ordered:
+            if not p.is_file():
+                st.error(f"Missing WAV on disk: {p}. Load the playlist again.")
+                return
+        try:
+            parsed_div = float(div_text) if str(div_text).strip() else None
+        except ValueError:
+            st.error("Diversity threshold must be empty or a number.")
+            return
+        with st.spinner("Running custom playlist pipeline (embed → profile → Suno → rerank)…"):
+            try:
+                result = run_custom_playlist_pipeline(
+                    wav_paths_ordered=wav_paths_ordered,
+                    participant_slug=use_slug,
+                    work_root=work_root,
+                    encoder=str(encoder),
+                    top_k=int(top_k),
+                    min_similarity=min_similarity,
+                    openai_model=str(openai_model),
+                    generation_model=str(generation_model),
+                    num_calls=int(num_calls),
+                    max_concurrency=int(max_concurrency),
+                    negative_prompt=negative_prompt.strip() or None,
+                    lyrics=str(lyrics),
+                    tempo_hint_bpm=int(tempo_hint_bpm) or None,
+                    duration_hint_seconds=int(duration_hint_seconds) or None,
+                    rerank_top_k=int(rerank_top_k),
+                    rerank_encoder=str(rerank_encoder),
+                    rerank_diversity_threshold=parsed_div,
+                    rebuild_profile=bool(rebuild_profile),
+                )
+            except Exception as exc:
+                st.exception(exc)
+                return
+        st.session_state["custom_pl_result"] = result
+        st.success(f"Done. Run id: `{result['run_id']}`")
+
+    preview = st.session_state.get("custom_pl_preview")
+    if preview:
+        st.subheader("Your WAV clips")
+        st.dataframe(pd.DataFrame(preview), width="stretch", hide_index=True)
+        st.markdown("**Listen to uploads**")
+        for row in preview:
+            p = Path(str(row["wav_path"]))
+            label = f"{row.get('#', '')}. {row.get('filename', p.name)}"
+            with st.expander(label):
+                if p.is_file():
+                    st.audio(p.read_bytes(), format="audio/wav")
+                else:
+                    st.warning(f"File not found: {p}. Click **Save clips & preview** again.")
+
+    result = st.session_state.get("custom_pl_result")
+    if result:
+        st.divider()
+        st.subheader("Generated music")
+        st.caption(
+            f"Run id: `{result['run_id']}` · Synthetic user: `{result['synthetic_user_id']}` · "
+            f"Manifest: `{result['manifest_path']}`"
+        )
+        uid = str(result["synthetic_user_id"])
+        prof_var = str(result["profile_variant"])
+        profile_artifacts = load_profile_artifacts(uid, profile_variant=prof_var)
+        try:
+            run_artifacts = load_generation_run(Path(result["run_root"]))
+        except Exception as exc:
+            st.error(f"Could not load generation run: {exc}")
+            run_artifacts = None
+        if run_artifacts is not None:
+            _render_generation_section(run_artifacts)
+        with st.expander("Pipeline details (retrieval, profile, prompt, embedding plot)", expanded=False):
+            st.markdown("#### Retrieval snapshot")
+            _render_retrieval_snapshot(profile_artifacts)
+            st.divider()
+            _render_profile_section(profile_artifacts)
+            llm_prompt_text = _extract_llm_generation_prompt(profile_artifacts)
+            if llm_prompt_text:
+                st.divider()
+                st.subheader("LLM generation prompt")
+                st.text_area("Prompt text", value=llm_prompt_text, height=120, disabled=True, key="custom_pl_prompt_txt")
+            if run_artifacts is not None:
+                st.divider()
+                _render_visualization_section(uid, run_artifacts)
+
+
 def _render_procedure_brief() -> None:
     st.markdown("### Pipeline overview")
     st.markdown(
@@ -1016,13 +1191,15 @@ def main() -> None:
             options=[
                 "Embedding Retrieval (Base vs Finetuned)",
                 "Generate AI Song",
+                "Custom WAV → AI music",
             ],
             index=0,
             horizontal=False,
-            help="Use one app with two separated modules.",
+            help="Use one app with multiple modules.",
         )
         show_query_compare = app_mode == "Embedding Retrieval (Base vs Finetuned)"
         show_generate_page = app_mode == "Generate AI Song"
+        show_custom_playlist = app_mode == "Custom WAV → AI music"
         generate_section = "Overview"
         if show_generate_page:
             generate_section = st.radio(
@@ -1119,6 +1296,10 @@ def main() -> None:
     if show_query_compare:
         st.caption("Compare retrieval behavior in zeroshot vs finetuned embedding spaces.")
         render_query_compare_page()
+        return
+
+    if show_custom_playlist:
+        _render_custom_playlist_page()
         return
 
     if build_embedding_clicked:
