@@ -1,0 +1,97 @@
+{
+  "user_id": "phase2_ryan",
+  "input_summary": {
+    "user_id": "phase2_ryan",
+    "source_top_k": 10,
+    "source_song_count": 10,
+    "top_genres": [
+      "electronic",
+      "experimental",
+      "synthpop",
+      "lo-fi",
+      "new wave",
+      "emo",
+      "noise pop",
+      "black metal"
+    ],
+    "top_tags": [
+      "electronic",
+      "experimental",
+      "synthpop",
+      "lo-fi",
+      "new wave",
+      "80s",
+      "cloud rap",
+      "emo",
+      "noise pop",
+      "2017"
+    ],
+    "representative_artists": [
+      "Sleigh Bells",
+      "Depeche Mode",
+      "Mount Eerie",
+      "BRENNAN SAVAGE",
+      "Rex Orange County",
+      "The Human League"
+    ],
+    "representative_tracks": [
+      {
+        "artist": "Sleigh Bells",
+        "song": "Favorite Transgressions"
+      },
+      {
+        "artist": "Depeche Mode",
+        "song": "Stories of Old"
+      },
+      {
+        "artist": "Mount Eerie",
+        "song": "Lost Wisdom Pt. 2"
+      },
+      {
+        "artist": "BRENNAN SAVAGE",
+        "song": "Bulletproof"
+      },
+      {
+        "artist": "Rex Orange County",
+        "song": "Green Eyes, Pt. II"
+      }
+    ],
+    "language_profile": {
+      "language_counts": {
+        "en": 9,
+        "de": 1
+      },
+      "instrumental_count": 0,
+      "vocal_or_language_count": 10,
+      "unknown_count": 0,
+      "instrumental_ratio": 0.0,
+      "vocal_or_language_ratio": 1.0,
+      "dominant_mode": "vocal"
+    },
+    "audio_profile": {
+      "danceability_mean": 0.551,
+      "energy_mean": 0.578,
+      "valence_mean": 0.368,
+      "tempo_mean": 120.485
+    },
+    "mood_summary": [
+      "energetic",
+      "driving",
+      "bittersweet",
+      "reflective",
+      "mid-tempo"
+    ],
+    "rule_based_profile_paragraph": "This listener gravitates toward electronic, experimental, synthpop, lo-fi, with recurring traits such as electronic, experimental, synthpop, lo-fi, new wave. Their taste leans toward energetic, driving, bittersweet, reflective, often centered on expressive vocals and restrained arrangements. The listener might enjoy artists such as Sleigh Bells, Depeche Mode, Mount Eerie, BRENNAN SAVAGE, while their broader preference reflects emotionally detailed, intimate music."
+  },
+  "profile_paragraph": "This listener seems drawn to emotionally charged electronic music that balances synthpop polish with lo-fi grit and experimental edges. Their taste leans toward mid-tempo, driving tracks with expressive vocals, moody melodies, and a bittersweet reflective tone. There’s a clear attraction to 80s-leaning new wave textures, cold synth layers, punchy drum programming, and occasional noise-pop distortion or indie-emo fragility. They may be drawn to artists such as Sleigh Bells, Depeche Mode, Mount Eerie, and The Human League, alongside more intimate alt-pop voices. Overall, the aesthetic feels atmospheric but kinetic: glossy enough to move, rough enough to feel personal.",
+  "suno_generation_prompt": "Vocal-led synthpop/electronic track with new wave sheen, lo-fi edge, and experimental noise-pop accents. Mid-tempo 120 BPM, driving drums, pulsing bass, chilly analog synths, layered harmonies, bittersweet and reflective mood. Intimate male vocal with crisp, emotive delivery. Dense but clean arrangement, 80s-inspired yet modern. Avoid overly polished pop and heavy metal guitars.",
+  "style_keywords": [
+    "synthpop",
+    "new wave",
+    "electronic",
+    "lo-fi grit",
+    "bittersweet",
+    "driving mid-tempo",
+    "experimental edge"
+  ]
+}
