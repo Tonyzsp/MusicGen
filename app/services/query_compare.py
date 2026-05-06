@@ -500,7 +500,6 @@ def _render_preview(hit: dict) -> None:
     meta = dict(hit.get("metadata") or {})
     missing = meta.pop("_metadata_missing", None)
     song, artist = _song_artist(hit)
-    enrichment = _cached_aa_song_index().get(str(hit.get("song_id", "")))
 
     st.markdown(f'<p class="tc-preview-title">{_h(song)}</p>', unsafe_allow_html=True)
     st.markdown(f'<p class="tc-muted">{_h(artist)}</p>', unsafe_allow_html=True)
@@ -512,7 +511,6 @@ def _render_preview(hit: dict) -> None:
     else:
         st.caption("No local MP3 (expected under music4all/audios/).")
 
-    _render_aa_context(enrichment)
     _render_metadata_block(meta, hit, missing=missing)
 
 
