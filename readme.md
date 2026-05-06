@@ -96,6 +96,19 @@ Gen4Rec/
 
 Note: dataset CSV/audio files and model checkpoints are intentionally not stored in git due size. Each teammate needs to download them locally. Phase 2 per-participant folders (`raw/`, `clips_30s/`, `manifest.csv`, `download_manifest.csv`, `result/`) are also gitignored under `src/eval/eval_phase_2/`; commit only code and `manifest_template.csv`.
 
+## Data Sources
+
+This project uses three related music datasets:
+
+- **Music4All**: the main dataset this project builds on. We use its listening history, track metadata, genres/tags, audio features, and local audio files to build user embeddings, retrieve similar tracks, create listener profiles, and evaluate generated recommendations.
+- **Music4All-Onion**: an extended track-level multimodal dataset related to Music4All. It is not the main dataset used by the core pipeline, but it provides the bridge used by Music4All A+A to map artist/album metadata back to Music4All-style song IDs.
+- **Music4All A+A**: an artist- and album-level extension. We use it as an optional enrichment layer for the Streamlit frontend, adding album covers, artist images, artist/album genres, Last.fm tags/links, release dates, listener/play counts, and other structured context.
+
+In short, the recommendation and generation pipeline is built on **Music4All**. **Music4All A+A** is used only as an additional artist/album information source to make retrieval and profile views more interpretable and visually informative.
+
+---
+
+
 ### Optional: Music4All A+A Visual Enrichment
 
 The retrieval page can optionally enrich preview cards with Music4All A+A artist/album metadata. This adds album covers, artist images, release dates, listeners/play counts, and artist/album genre chips when the retrieved `song_id` is covered by Music4All A+A.
@@ -314,17 +327,6 @@ streamlit run app/streamlit_app.py
 
 ---
 
-## Data Sources
-
-This project uses three related music datasets:
-
-- **Music4All**: the main dataset this project builds on. We use its listening history, track metadata, genres/tags, audio features, and local audio files to build user embeddings, retrieve similar tracks, create listener profiles, and evaluate generated recommendations.
-- **Music4All-Onion**: an extended track-level multimodal dataset related to Music4All. It is not the main dataset used by the core pipeline, but it provides the bridge used by Music4All A+A to map artist/album metadata back to Music4All-style song IDs.
-- **Music4All A+A**: an artist- and album-level extension. We use it as an optional enrichment layer for the Streamlit frontend, adding album covers, artist images, artist/album genres, Last.fm tags/links, release dates, listener/play counts, and other structured context.
-
-In short, the recommendation and generation pipeline is built on **Music4All**. **Music4All A+A** is used only as an additional artist/album information source to make retrieval and profile views more interpretable and visually informative.
-
----
 
 ## Citation
 
