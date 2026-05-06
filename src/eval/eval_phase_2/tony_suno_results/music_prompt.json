@@ -1,0 +1,96 @@
+{
+  "user_id": "phase2_Tony",
+  "input_summary": {
+    "user_id": "phase2_Tony",
+    "source_top_k": 10,
+    "source_song_count": 10,
+    "top_genres": [
+      "rap",
+      "emo",
+      "hip hop",
+      "electronic",
+      "minimal",
+      "techno",
+      "electronica",
+      "emo rap"
+    ],
+    "top_tags": [
+      "rap",
+      "cloud rap",
+      "emo",
+      "hip hop",
+      "electronic",
+      "hip-hop",
+      "minimal",
+      "techno",
+      "electronica",
+      "post-emo"
+    ],
+    "representative_artists": [
+      "Lil Peep",
+      "JPEGMAFIA",
+      "BRENNAN SAVAGE",
+      "Matthew Dear",
+      "Wicca Phase Springs Eternal",
+      "Bob Moses"
+    ],
+    "representative_tracks": [
+      {
+        "artist": "BRENNAN SAVAGE",
+        "song": "Bulletproof"
+      },
+      {
+        "artist": "Matthew Dear",
+        "song": "Echo"
+      },
+      {
+        "artist": "Lil Peep",
+        "song": "Problems"
+      },
+      {
+        "artist": "Wicca Phase Springs Eternal",
+        "song": "I REACH OUT TO YOU IN SONG"
+      },
+      {
+        "artist": "Bob Moses",
+        "song": "Winter's Song"
+      }
+    ],
+    "language_profile": {
+      "language_counts": {
+        "en": 10
+      },
+      "instrumental_count": 0,
+      "vocal_or_language_count": 10,
+      "unknown_count": 0,
+      "instrumental_ratio": 0.0,
+      "vocal_or_language_ratio": 1.0,
+      "dominant_mode": "vocal"
+    },
+    "audio_profile": {
+      "danceability_mean": 0.621,
+      "energy_mean": 0.6,
+      "valence_mean": 0.28,
+      "tempo_mean": 116.287
+    },
+    "mood_summary": [
+      "energetic",
+      "driving",
+      "bittersweet",
+      "reflective",
+      "mid-tempo"
+    ],
+    "rule_based_profile_paragraph": "This listener gravitates toward rap, emo, hip hop, electronic, with recurring traits such as rap, cloud rap, emo, hip hop, electronic. Their taste leans toward energetic, driving, bittersweet, reflective, often centered on expressive vocals and restrained arrangements. The listener might enjoy artists such as Lil Peep, JPEGMAFIA, BRENNAN SAVAGE, Matthew Dear, while their broader preference reflects emotionally detailed, intimate music."
+  },
+  "profile_paragraph": "This listener leans into a moody blend of rap, emo, hip hop, and electronic music with a strong vocal focus. Their taste points toward confessional writing, bittersweet melodies, and a restless but controlled energy, often around mid-tempo grooves. They seem drawn to atmospheric beats, minimal to layered electronic textures, and emotionally raw delivery that sits between cloud rap haze and club-adjacent pulse. The listener might enjoy artists such as Lil Peep, JPEGMAFIA, BRENNAN SAVAGE, and Wicca Phase Springs Eternal, alongside more rhythmic electronic turns like Matthew Dear or Bob Moses. Overall, the aesthetic feels intimate, bruised, and driving rather than explosive.",
+  "suno_generation_prompt": "Vocal-led emo rap x minimal electronic track, 115 BPM. Male vocal, emotionally raw and intimate, with melodic half-sung verses and a hooky chorus. Sparse 808s, hazy synth pads, crisp drums, subtle techno pulse, melancholic atmosphere, driving but restrained, reflective and bittersweet. Clean modern production, spacious mix, dark club-adjacent tension. Avoid bright pop polish and aggressive trap maximalism.",
+  "style_keywords": [
+    "emo rap",
+    "cloud rap",
+    "minimal electronic",
+    "bittersweet",
+    "mid-tempo",
+    "hazy synths",
+    "raw vocals"
+  ]
+}
