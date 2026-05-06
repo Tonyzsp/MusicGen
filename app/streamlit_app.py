@@ -46,6 +46,9 @@ from src.embed.recommend_topk import Config as RecConfig
 from src.embed.recommend_topk import load_song_metadata
 from src.generate.artifacts import sanitize_segment
 
+# Generate AI Song: single page that stacks Phase 1 → 3 (sidebar shows all related controls).
+GENERATE_SECTION_FULL_PIPELINE = "Full pipeline (Phases 1–3)"
+
 
 st.set_page_config(
     page_title="Gen4Rec Demo",
@@ -1026,6 +1029,7 @@ def main() -> None:
                 "Generate section",
                 options=[
                     "Overview",
+                    GENERATE_SECTION_FULL_PIPELINE,
                     "Phase 1 - User Embedding",
                     "Phase 2 - Retrieval + Prompt",
                     "Phase 3 - Generate + Rerank + Evaluate",
@@ -1043,9 +1047,16 @@ def main() -> None:
                 st.session_state["selected_user_id"] = global_user_id
             else:
                 st.warning("No users found in listening history.")
-        show_phase1_controls = show_generate_page and generate_section == "Phase 1 - User Embedding"
-        show_phase2_controls = show_generate_page and generate_section == "Phase 2 - Retrieval + Prompt"
-        show_phase3_controls = show_generate_page and generate_section == "Phase 3 - Generate + Rerank + Evaluate"
+        show_phase1_controls = show_generate_page and (
+            generate_section == "Phase 1 - User Embedding" or generate_section == GENERATE_SECTION_FULL_PIPELINE
+        )
+        show_phase2_controls = show_generate_page and (
+            generate_section == "Phase 2 - Retrieval + Prompt" or generate_section == GENERATE_SECTION_FULL_PIPELINE
+        )
+        show_phase3_controls = show_generate_page and (
+            generate_section == "Phase 3 - Generate + Rerank + Evaluate"
+            or generate_section == GENERATE_SECTION_FULL_PIPELINE
+        )
 
         phase1_user_id = st.session_state.get("phase1_user_id", "")
         phase1_embedding_variant = st.session_state.get("phase1_embedding_variant", "")
@@ -1381,8 +1392,17 @@ def main() -> None:
         )
         _render_procedure_brief()
 
-    if show_generate_page and generate_section == "Phase 1 - User Embedding":
-        st.markdown("## Phase 1 — User Embedding + Profile Setup")
+    if show_generate_page and (
+        generate_section == "Phase 1 - User Embedding" or generate_section == GENERATE_SECTION_FULL_PIPELINE
+    ):
+        if generate_section == GENERATE_SECTION_FULL_PIPELINE:
+            st.markdown("## Full pipeline — Phase 1: User embedding")
+            st.caption(
+                "Phases 1–3 are stacked on this page in order. The sidebar includes embedding build (Phase 1), "
+                "retrieval / profile (Phase 2), and generation (Phase 3) controls."
+            )
+        else:
+            st.markdown("## Phase 1 — User Embedding + Profile Setup")
         p1 = st.columns(3)
         p1[0].metric("Embedding variant", phase1_embedding_variant or "—")
         p1[1].metric("Recent-k", int(build_recent_k))
@@ -1467,8 +1487,14 @@ def main() -> None:
             except Exception as exc:
                 st.info(f"Phase 1 PCA unavailable: {exc}")
 
-    if show_generate_page and generate_section == "Phase 2 - Retrieval + Prompt":
-        st.markdown("## Phase 2 — Retrieval + Prompt")
+    if show_generate_page and (
+        generate_section == "Phase 2 - Retrieval + Prompt" or generate_section == GENERATE_SECTION_FULL_PIPELINE
+    ):
+        if generate_section == GENERATE_SECTION_FULL_PIPELINE:
+            st.divider()
+            st.markdown("## Full pipeline — Phase 2: Retrieval + prompt")
+        else:
+            st.markdown("## Phase 2 — Retrieval + Prompt")
         st.caption(f"Current user: `{user_id}` | Embedding variant: `{embedding_variant}`")
         st.subheader("Retrieval snapshot")
         _render_retrieval_snapshot(profile_artifacts)
@@ -1480,8 +1506,15 @@ def main() -> None:
             st.subheader("LLM generation prompt")
             st.text_area("Prompt text", value=llm_prompt_text, height=120, disabled=True)
 
-    if show_generate_page and generate_section == "Phase 3 - Generate + Rerank + Evaluate":
-        st.markdown("## Phase 3 — Generate + Rerank + Evaluate")
+    if show_generate_page and (
+        generate_section == "Phase 3 - Generate + Rerank + Evaluate"
+        or generate_section == GENERATE_SECTION_FULL_PIPELINE
+    ):
+        if generate_section == GENERATE_SECTION_FULL_PIPELINE:
+            st.divider()
+            st.markdown("## Full pipeline — Phase 3: Generate + rerank + evaluate")
+        else:
+            st.markdown("## Phase 3 — Generate + Rerank + Evaluate")
         st.caption(f"Current user: `{user_id}` | Embedding variant: `{embedding_variant}`")
         if not profile_artifacts.prompt:
             st.info("Please run Phase 2 first: click `Build or reuse profile` to prepare the prompt.")
