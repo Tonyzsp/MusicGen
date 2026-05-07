@@ -487,24 +487,26 @@ def _render_profile_visual_context(profile_artifacts: ProfileArtifacts, summary:
             )
 
 
-def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
+def _render_profile_section(profile_artifacts: ProfileArtifacts, *, compact: bool = False) -> None:
     prompt = profile_artifacts.prompt
     summary = (prompt or {}).get("input_summary") or profile_artifacts.summary or {}
     if not prompt:
         st.info("No prompt artifact is available yet. Click `Load profile` to build or load it.")
         return
 
-    st.subheader("Recent listening snapshot")
-    audio_profile = summary.get("audio_profile", {})
-    metrics = st.columns(4)
-    metrics[0].metric("Danceability", audio_profile.get("danceability_mean"))
-    metrics[1].metric("Energy", audio_profile.get("energy_mean"))
-    metrics[2].metric("Valence", audio_profile.get("valence_mean"))
-    metrics[3].metric("Tempo", audio_profile.get("tempo_mean"))
-    if summary.get("mood_summary"):
-        st.caption("Mood summary: " + ", ".join(summary["mood_summary"]))
+    if not compact:
+        st.subheader("Recent listening snapshot")
+        audio_profile = summary.get("audio_profile", {})
+        metrics = st.columns(4)
+        metrics[0].metric("Danceability", audio_profile.get("danceability_mean"))
+        metrics[1].metric("Energy", audio_profile.get("energy_mean"))
+        metrics[2].metric("Valence", audio_profile.get("valence_mean"))
+        metrics[3].metric("Tempo", audio_profile.get("tempo_mean"))
+        if summary.get("mood_summary"):
+            st.caption("Mood summary: " + ", ".join(summary["mood_summary"]))
 
-    st.divider()
+        st.divider()
+
     st.subheader("LLM listener profile")
     st.caption(
         "This section is generated from retrieved songs in Phase 2 (metadata/tags + summary), "
@@ -512,50 +514,53 @@ def _render_profile_section(profile_artifacts: ProfileArtifacts) -> None:
     )
     st.write(prompt.get("profile_paragraph", ""))
 
-    left, right = st.columns([1, 1])
-    with left:
+    if compact:
         st.markdown("**Style keywords**")
         st.write(", ".join(prompt.get("style_keywords", [])) or "None")
-        st.markdown("**Top genres**")
-        st.write(", ".join(summary.get("top_genres", [])) or "None")
-        st.markdown("**Top tags**")
-        st.write(", ".join(summary.get("top_tags", [])) or "None")
-        language_profile = summary.get("language_profile", {})
-        if language_profile:
-            st.markdown("**Language / vocal mode**")
-            dominant_mode = language_profile.get("dominant_mode", "unknown")
-            instrumental_ratio = language_profile.get("instrumental_ratio")
-            vocal_ratio = language_profile.get("vocal_or_language_ratio")
-            st.write(
-                f"Dominant mode: `{dominant_mode}` | "
-                f"Instrumental ratio: {_format_metric_value(instrumental_ratio)} | "
-                f"Vocal/language ratio: {_format_metric_value(vocal_ratio)}"
-            )
-            language_counts = language_profile.get("language_counts", {})
-            if language_counts:
-                counts_preview = ", ".join(
-                    f"{label}: {count}" for label, count in list(language_counts.items())[:6]
+    else:
+        left, right = st.columns([1, 1])
+        with left:
+            st.markdown("**Style keywords**")
+            st.write(", ".join(prompt.get("style_keywords", [])) or "None")
+            st.markdown("**Top genres**")
+            st.write(", ".join(summary.get("top_genres", [])) or "None")
+            st.markdown("**Top tags**")
+            st.write(", ".join(summary.get("top_tags", [])) or "None")
+            language_profile = summary.get("language_profile", {})
+            if language_profile:
+                st.markdown("**Language / vocal mode**")
+                dominant_mode = language_profile.get("dominant_mode", "unknown")
+                instrumental_ratio = language_profile.get("instrumental_ratio")
+                vocal_ratio = language_profile.get("vocal_or_language_ratio")
+                st.write(
+                    f"Dominant mode: `{dominant_mode}` | "
+                    f"Instrumental ratio: {_format_metric_value(instrumental_ratio)} | "
+                    f"Vocal/language ratio: {_format_metric_value(vocal_ratio)}"
                 )
-                st.caption("Language counts: " + counts_preview)
-    with right:
-        st.markdown("**Representative artists**")
-        st.write(", ".join(summary.get("representative_artists", [])) or "None")
-        st.markdown("**Representative tracks**")
-        representative_tracks = summary.get("representative_tracks", [])
-        if representative_tracks:
-            for item in representative_tracks:
-                st.write(f"- {item.get('artist', 'Unknown')} - {item.get('song', 'Unknown')}")
-        else:
-            st.write("None")
+                language_counts = language_profile.get("language_counts", {})
+                if language_counts:
+                    counts_preview = ", ".join(
+                        f"{label}: {count}" for label, count in list(language_counts.items())[:6]
+                    )
+                    st.caption("Language counts: " + counts_preview)
+        with right:
+            st.markdown("**Representative artists**")
+            st.write(", ".join(summary.get("representative_artists", [])) or "None")
+            st.markdown("**Representative tracks**")
+            representative_tracks = summary.get("representative_tracks", [])
+            if representative_tracks:
+                for item in representative_tracks:
+                    st.write(f"- {item.get('artist', 'Unknown')} - {item.get('song', 'Unknown')}")
+            else:
+                st.write("None")
 
-    _render_profile_visual_context(profile_artifacts, summary)
+        _render_profile_visual_context(profile_artifacts, summary)
 
-    if profile_artifacts.validation:
-        with st.expander("Validation summary"):
-            validation = profile_artifacts.validation
-            if validation.get("human_readable_summary"):
-                st.write(validation["human_readable_summary"])
-            st.json(validation)
+        if profile_artifacts.validation:
+            with st.expander("Validation summary"):
+                validation = profile_artifacts.validation
+                if validation.get("human_readable_summary"):
+                    st.write(validation["human_readable_summary"])
 
 
 def _extract_llm_generation_prompt(profile_artifacts: ProfileArtifacts) -> str:
@@ -644,8 +649,6 @@ def _render_retrieval_snapshot(profile_artifacts: ProfileArtifacts) -> None:
                     }
                 )
             st.dataframe(full_rows, width="stretch")
-        with st.expander("Raw retrieval JSON"):
-            st.json(raw)
     else:
         st.info("No songs in retrieval payload.")
 
@@ -653,8 +656,9 @@ def _render_retrieval_snapshot(profile_artifacts: ProfileArtifacts) -> None:
 def _render_custom_playlist_page() -> None:
     st.markdown("## Custom WAV → AI music")
     st.caption(
-        "Upload one or more **.wav** files only (RIFF/WAVE). Listen to them below, then run the pipeline: "
-        "pool CLAP embeddings → retrieval + profile → Suno → rerank. **No CSV.** Generated MP3s appear at the bottom."
+        "Upload one or more **.wav** files (RIFF/WAVE, unique filenames). Click **Generate music** to run: "
+        "CLAP pool → retrieval + profile → Suno → rerank. After the run you will see **listener profile**, "
+        "**generation prompt**, and **generated tracks** (no raw JSON)."
     )
     work_root = REPO_ROOT / "outputs" / "custom_playlist_streamlit"
 
@@ -696,13 +700,9 @@ def _render_custom_playlist_page() -> None:
         help="Only RIFF/WAVE .wav files. Order is preserved for embedding pooling (use unique filenames).",
     ) or []
 
-    col_a, col_b = st.columns(2)
-    with col_a:
-        load_clicked = st.button("Save clips & preview", use_container_width=True)
-    with col_b:
-        run_clicked = st.button("Generate music", type="primary", use_container_width=True)
+    run_clicked = st.button("Generate music", type="primary", use_container_width=True)
 
-    if load_clicked:
+    if run_clicked:
         if not uploaded_wavs:
             st.warning("Please upload at least one .wav file.")
             return
@@ -712,32 +712,18 @@ def _render_custom_playlist_page() -> None:
                 st.error(f"Only .wav files are allowed: {uf.name!r}")
                 return
             wav_payloads.append((uf.name, uf.getvalue()))
+        use_slug = safe_slug
         try:
-            clips_dir = work_root / safe_slug / "clips_30s"
+            clips_dir = work_root / use_slug / "clips_30s"
             write_wav_files_to_clips_dir(clips_dir, wav_payloads, clear=True)
-            wav_paths = clip_paths_in_upload_order(clips_dir, wav_payloads)
-            preview = [
-                {"#": i, "filename": p.name, "wav_path": str(p)}
-                for i, p in enumerate(wav_paths, start=1)
-            ]
+            wav_paths_ordered = clip_paths_in_upload_order(clips_dir, wav_payloads)
         except Exception as exc:
             st.error(str(exc))
             return
-        st.session_state["custom_pl_slug"] = safe_slug
-        st.session_state["custom_pl_paths"] = [str(p) for p in wav_paths]
-        st.session_state["custom_pl_preview"] = preview
-        st.success(f"Saved {len(preview)} clip(s). You can play them below.")
-
-    if run_clicked:
-        paths_raw = st.session_state.get("custom_pl_paths")
-        use_slug = st.session_state.get("custom_pl_slug") or safe_slug
-        if not paths_raw:
-            st.warning('Click "Save clips & preview" first after uploading your .wav files.')
-            return
-        wav_paths_ordered = [Path(p) for p in paths_raw]
+        st.session_state["custom_pl_slug"] = use_slug
         for p in wav_paths_ordered:
             if not p.is_file():
-                st.error(f"Missing WAV on disk: {p}. Load the playlist again.")
+                st.error(f"Missing WAV on disk: {p}.")
                 return
         try:
             parsed_div = float(div_text) if str(div_text).strip() else None
@@ -772,51 +758,38 @@ def _render_custom_playlist_page() -> None:
         st.session_state["custom_pl_result"] = result
         st.success(f"Done. Run id: `{result['run_id']}`")
 
-    preview = st.session_state.get("custom_pl_preview")
-    if preview:
-        st.subheader("Your WAV clips")
-        st.dataframe(pd.DataFrame(preview), width="stretch", hide_index=True)
-        st.markdown("**Listen to uploads**")
-        for row in preview:
-            p = Path(str(row["wav_path"]))
-            label = f"{row.get('#', '')}. {row.get('filename', p.name)}"
-            with st.expander(label):
-                if p.is_file():
-                    st.audio(p.read_bytes(), format="audio/wav")
-                else:
-                    st.warning(f"File not found: {p}. Click **Save clips & preview** again.")
-
     result = st.session_state.get("custom_pl_result")
     if result:
         st.divider()
-        st.subheader("Generated music")
+        st.subheader("Profile & prompt")
         st.caption(
-            f"Run id: `{result['run_id']}` · Synthetic user: `{result['synthetic_user_id']}` · "
-            f"Manifest: `{result['manifest_path']}`"
+            f"Run id: `{result['run_id']}` · Outputs under `outputs/custom_playlist_streamlit/{st.session_state.get('custom_pl_slug', '')}/`"
         )
         uid = str(result["synthetic_user_id"])
         prof_var = str(result["profile_variant"])
         profile_artifacts = load_profile_artifacts(uid, profile_variant=prof_var)
+        _render_profile_section(profile_artifacts, compact=True)
+        llm_prompt_text = _extract_llm_generation_prompt(profile_artifacts)
+        if llm_prompt_text:
+            st.divider()
+            st.subheader("LLM generation prompt")
+            st.text_area(
+                "Prompt text",
+                value=llm_prompt_text,
+                height=160,
+                disabled=True,
+                key="custom_pl_prompt_txt",
+            )
+
+        st.divider()
+        st.subheader("Generated music")
         try:
             run_artifacts = load_generation_run(Path(result["run_root"]))
         except Exception as exc:
             st.error(f"Could not load generation run: {exc}")
             run_artifacts = None
         if run_artifacts is not None:
-            _render_generation_section(run_artifacts)
-        with st.expander("Pipeline details (retrieval, profile, prompt, embedding plot)", expanded=False):
-            st.markdown("#### Retrieval snapshot")
-            _render_retrieval_snapshot(profile_artifacts)
-            st.divider()
-            _render_profile_section(profile_artifacts)
-            llm_prompt_text = _extract_llm_generation_prompt(profile_artifacts)
-            if llm_prompt_text:
-                st.divider()
-                st.subheader("LLM generation prompt")
-                st.text_area("Prompt text", value=llm_prompt_text, height=120, disabled=True, key="custom_pl_prompt_txt")
-            if run_artifacts is not None:
-                st.divider()
-                _render_visualization_section(uid, run_artifacts)
+            _render_generation_section(run_artifacts, hide_raw_json=True)
 
 
 def _render_procedure_brief() -> None:
@@ -1001,7 +974,11 @@ def _render_track_card(track, index: int) -> None:
                 st.write(track.style)
 
 
-def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> None:
+def _render_generation_section(
+    run_artifacts: GenerationRunArtifacts | None,
+    *,
+    hide_raw_json: bool = False,
+) -> None:
     st.subheader("Generated tracks")
     if run_artifacts is None:
         st.info("No generation run found yet. Use the form below to generate tracks.")
@@ -1031,7 +1008,8 @@ def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> 
                 st.write(", ".join(style_keywords))
             if run_artifacts.prompt_input_path:
                 st.caption(f"Prompt input path: `{run_artifacts.prompt_input_path}`")
-            st.json(run_artifacts.prompt_input)
+            if not hide_raw_json:
+                st.json(run_artifacts.prompt_input)
 
     selected_tab, candidates_tab, report_tab = st.tabs(["Selected tracks", "All candidates", "Run report"])
 
@@ -1055,14 +1033,15 @@ def _render_generation_section(run_artifacts: GenerationRunArtifacts | None) -> 
             st.markdown(run_artifacts.report_markdown)
         else:
             st.info("No markdown report found for this run.")
-        if run_artifacts.prompt_input:
-            with st.expander("Prompt input JSON"):
-                st.json(run_artifacts.prompt_input)
-        with st.expander("Manifest JSON"):
-            st.json(run_artifacts.manifest)
-        if run_artifacts.rerank:
-            with st.expander("Rerank JSON"):
-                st.json(run_artifacts.rerank)
+        if not hide_raw_json:
+            if run_artifacts.prompt_input:
+                with st.expander("Prompt input JSON"):
+                    st.json(run_artifacts.prompt_input)
+            with st.expander("Manifest JSON"):
+                st.json(run_artifacts.manifest)
+            if run_artifacts.rerank:
+                with st.expander("Rerank JSON"):
+                    st.json(run_artifacts.rerank)
 
 
 def _render_saved_eval_summary(eval_artifacts: EvalArtifacts) -> None:
