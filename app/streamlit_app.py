@@ -700,6 +700,15 @@ def _render_custom_playlist_page() -> None:
         help="Only RIFF/WAVE .wav files. Order is preserved for embedding pooling (use unique filenames).",
     ) or []
 
+    if uploaded_wavs:
+        st.markdown("##### Uploaded WAVs — preview")
+        st.caption("Use the play control on each file to listen before generating.")
+        for uf in uploaded_wavs:
+            st.text(uf.name)
+            wav_mime = (uf.type or "").strip().lower()
+            audio_format = "audio/wav" if wav_mime in {"", "audio/wav", "audio/x-wav", "audio/wave"} else uf.type or "audio/wav"
+            st.audio(uf.getvalue(), format=audio_format)
+
     run_clicked = st.button("Generate music", type="primary", use_container_width=True)
 
     if run_clicked:
